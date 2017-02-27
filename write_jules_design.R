@@ -72,6 +72,21 @@ kaps_roth = list(
   'namelist' = 'jules_surface'
 )
 
+n_inorg_turnover = list(
+  'standard' = 1,
+  'min' = 0,
+  'max' = 10,
+  'namelist' = 'jules_surface'
+)
+
+sorp = list(
+  'standard' = 10,
+  'min' = 0,
+  'max' = 20,
+  'namelist' = 'jules_surface'
+)
+
+
 
 paramlist = list('g_root_io' = g_root_io,
                  'g_wood_io' = g_wood_io,
@@ -80,7 +95,9 @@ paramlist = list('g_root_io' = g_root_io,
                  'hw_sw_io' = hw_sw_io, 
                  'knl_io' = knl_io, 
                  'a_wl_io' = a_wl_io,
-                 'kaps_roth' = kaps_roth
+                 'kaps_roth' = kaps_roth,
+                 'n_inorg_turnover' = n_inorg_turnover,
+                 'sorp' = sorp
 )
 
 write_jules_design_bypft = function(paramlist, n, fnprefix = 'test',
@@ -129,7 +146,7 @@ write_jules_design_bypft = function(paramlist, n, fnprefix = 'test',
   write.matrix(lhs, file = lhsfn)
 }
 
-write_jules_design_bypft(paramlist, n = 100, rn = 10)
+
 
 # THINGS TO FIX
 
@@ -138,10 +155,6 @@ write_jules_design_bypft(paramlist, n = 100, rn = 10)
 # 2) This just does a per-pft latin hypercube, and we might well want to 
 # do a "by factor" lhs. In fact, we'll want to mix them, which will
 # be a pain
-
-minfac = rep(0.5, 8)
-maxfac = rep(2, 8)
-n = 10
 
 write_jules_design_byparam = function(paramlist, n, minfac, maxfac, fnprefix = 'test',
                                       lhsfn = 'lhs.txt', rn = 3){
@@ -184,9 +197,11 @@ write_jules_design_byparam = function(paramlist, n, minfac, maxfac, fnprefix = '
   write.matrix(lhs, file = lhsfn)
 }
 
+minfac = rep(0.5, length(paramlist))
+maxfac = rep(2, length(paramlist))
 write_jules_design_byparam(paramlist, minfac, maxfac, n = 10, rn = 3)
 
-
+write_jules_design_bypft(paramlist, n = 100, rn = 10)
 
 
 # Development and supporting code from this point on
