@@ -308,7 +308,51 @@ write_jules_design_bypft(paramlist, n = 100, rn = 10)
 # do a "by factor" lhs. In fact, we'll want to mix them, which will
 # be a pain
 
+library(MASS)
+minfac = rep(0.5, 8)
+maxfac = rep(2, 8)
+n = 10
 
+write_jules_design_byparam = function(paramlist, n, minfac, maxfac, fnprefix = 'test',
+                                      lhsfn = 'lhs.txt', rn = 3){
+  
+  paramvec = names(paramlist)
+  nmlvec = unlist(lapply(paramlist, FUN = function(x) x$namelist))
+  k = length(paramvec)
 
+  lhs = unnormalize(
+    maximinLHS(n = n, k = k, dup = 1),
+    un.mins = minfac,
+    un.maxes = maxfac
+  )
+  colnames(lhs) = paramvec
+  
+  for(i in 1:nrow(lhs)){
+    
+    fn = paste0(fnprefix,i,'.txt')
+    
+    for(el in unique(nmlvec)){
+      write(paste0('[namelist:',el,']'), file = fn, append = TRUE)
+    
+      # grab the parts of the list that match
+      param_elms = paramlist[nmlvec==el]
+      param_elms_vec = names(param_elms)
+      
+      for(j in 1:length(param_elms)){
+        
+        param = param_elms_vec[j]
+        colix = grep(param, colnames(lhs))
+        
+        lhs.factor = lhs[i, colix]
+        values.out = lhs.factor * get(param, paramlist)$standard
+       write(paste0(param,'=',(paste0(round(values.out,rn), collapse = ',')), collapse = ''),
+              file = fn, append = TRUE)
+      }
+      write('/', file = fn, append = TRUE)
+    }
+  }
+  write.matrix(lhs, file = lhsfn)
+}
 
+write_jules_design_byparam(paramlist, minfac, maxfac, n = 10, rn = 3)
 
