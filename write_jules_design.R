@@ -223,6 +223,9 @@ write_jules_design = function(paramlist, n, fac, minfac, maxfac, fnprefix = 'tes
   parampft = paramlist[-fac.ix]
   pftvec = names(parampft)
   
+  parampft_nml = unlist(lapply(parampft, FUN = function(x) x$namelist))
+  paramfac_nml = unlist(lapply(paramfac, FUN = function(x) x$namelist))
+  
   parampft_standard = unlist(lapply(parampft, FUN = function(x) x$standard))
   parampft_mins = unlist(lapply(parampft, FUN = function(x) x$min))
   parampft_maxes = unlist(lapply(parampft, FUN = function(x) x$max))
@@ -250,21 +253,25 @@ write_jules_design = function(paramlist, n, fac, minfac, maxfac, fnprefix = 'tes
       
       # grab the parts of the list that match
       # BUG here!
-      pft_elms = parampft[nmlvec==el] & statement
+      pft_elms = parampft[parampft_nml==el] # & statement
       pft_elms_vec = names(pft_elms)
       
-      fac_elms = paramfac[nmlvec==el]
+      fac_elms = paramfac[paramfac_nml==el]
       fac_elms_vec = names(fac_elms)
       
+      if(length(pft_elms_vec) > 0){
       for(j in 1:length(pft_elms_vec)){
         param = pft_elms_vec[j]
         colix = grep(param, colnames(lhs))
-        lhs.factor = lhs[i, colix]
-        values.out = lhs.factor * get(param, paramlist)$standard
+        values.out = lhs[i, colix]
         write(paste0(param,'=',(paste0(round(values.out,rn), collapse = ',')), collapse = ''),
               file = fn, append = TRUE)
+        
+      }
       }
       
+      if(length(fac_elms_vec) > 0){
+        
       for(k in 1: length(fac_elms_vec)){
         param = fac_elms_vec[k]
         colix = grep(param, colnames(lhs))
@@ -272,6 +279,8 @@ write_jules_design = function(paramlist, n, fac, minfac, maxfac, fnprefix = 'tes
         values.out = lhs.factor * get(param, paramlist)$standard
         write(paste0(param,'=',(paste0(round(values.out,rn), collapse = ',')), collapse = ''),
               file = fn, append = TRUE)
+      }
+        
       }
       write('/', file = fn, append = TRUE)
     }
@@ -282,7 +291,6 @@ write_jules_design = function(paramlist, n, fac, minfac, maxfac, fnprefix = 'tes
 fac = c('g_root_io', 'retran_l_io')
 minfac = c(0.5, 0.5)
 maxfac = c(2,2)
-
 
 write_jules_design(paramlist, n = 10, fac = fac, minfac = minfac, maxfac = maxfac)
 
