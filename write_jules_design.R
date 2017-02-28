@@ -2,19 +2,13 @@
 # Write a design matrix and push the parameters to 
 # configuration files.
 
-# Tasks
-
-# 1. Take in or generate parameter name strings and max/min values
-# 2. Build appropriate design matrix
-# 3. Write rows to file in appropriate place
-# Normalize/unnormalize
-
 library(lhs)
 library(MASS)
 source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtools.R")
-# -------------------------------------------------------
-# LHS design varying by PFT
-# -------------------------------------------------------
+
+# ----------------------------------------------------
+# Create a list of parameters
+# ----------------------------------------------------
 
 hw_sw_io = list(
   'standard' = rep(0.5, 13),
@@ -86,8 +80,6 @@ sorp = list(
   'namelist' = 'jules_surface'
 )
 
-
-
 paramlist = list('g_root_io' = g_root_io,
                  'g_wood_io' = g_wood_io,
                  'retran_l_io' = retran_l_io,
@@ -99,6 +91,94 @@ paramlist = list('g_root_io' = g_root_io,
                  'n_inorg_turnover' = n_inorg_turnover,
                  'sorp' = sorp
 )
+
+
+write_jules_design = function(paramlist, n, fac, minfac, maxfac, fnprefix = 'test',
+                              lhsfn = 'lhs.txt', rn = 3){
+  # This code writes a design taking either a 'factor', min and max by which
+  # to multiply all pfts, or perturbing each pft individually according to
+  # their maximum and minimum in the parameter list.
+  # fac is a character vector of names of variables that you would like to alter
+  # by a factor. Everything else gets variaed by PFT
+  # minfac and maxfac must correspond to fac - i.e. one value per parameter, in the
+  # correct order.
+  
+  paramvec = names(paramlist)
+  nmlvec = unlist(lapply(paramlist, FUN = function(x) x$namelist))
+  
+  # which parameters do we want as a parameter list?
+  fac.ix = which(names(paramlist) %in% fac)
+  paramfac = paramlist[fac.ix]
+  parampft = paramlist[-fac.ix]
+  pftvec = names(parampft)
+  
+  parampft_nml = unlist(lapply(parampft, FUN = function(x) x$namelist))
+  paramfac_nml = unlist(lapply(paramfac, FUN = function(x) x$namelist))
+  
+  parampft_standard = unlist(lapply(parampft, FUN = function(x) x$standard))
+  parampft_mins = unlist(lapply(parampft, FUN = function(x) x$min))
+  parampft_maxes = unlist(lapply(parampft, FUN = function(x) x$max))
+  
+  all_names = c(names(parampft_standard), fac)
+  k = length(all_names)
+  
+  # Do the pfts and then the factors
+  lhs = unnormalize(
+    maximinLHS(n = n, k = k, dup = 1),
+    un.mins = c(parampft_mins , minfac),
+    un.maxes = c(parampft_maxes, maxfac)
+  )
+  colnames(lhs) = all_names
+  
+  for(i in 1:nrow(lhs)){
+    fn = paste0(fnprefix,i,'.txt')
+    
+    for(el in unique(nmlvec)){
+      write(paste0('[namelist:',el,']'), file = fn, append = TRUE)
+      
+      # grab the parts of the list that match
+      pft_elms = parampft[parampft_nml==el] # & statement
+      pft_elms_vec = names(pft_elms)
+      fac_elms = paramfac[paramfac_nml==el]
+      fac_elms_vec = names(fac_elms)
+      
+      if(length(pft_elms_vec) > 0){
+        for(j in 1:length(pft_elms_vec)){
+          param = pft_elms_vec[j]
+          colix = grep(param, colnames(lhs))
+          values.out = lhs[i, colix]
+          write(paste0(param,'=',(paste0(round(values.out,rn), collapse = ',')), collapse = ''),
+                file = fn, append = TRUE)
+        }
+      }
+      
+      if(length(fac_elms_vec) > 0){
+        for(k in 1: length(fac_elms_vec)){
+          param = fac_elms_vec[k]
+          colix = grep(param, colnames(lhs))
+          lhs.factor = lhs[i, colix]
+          values.out = lhs.factor * get(param, paramlist)$standard
+          write(paste0(param,'=',(paste0(round(values.out,rn), collapse = ',')), collapse = ''),
+                file = fn, append = TRUE)
+        }
+      }
+      write('/', file = fn, append = TRUE)
+    }
+  }
+  write.matrix(lhs, file = lhsfn)
+}
+
+# vary these parameters only by a factor
+fac = c('g_root_io', 'retran_l_io')
+minfac = c(0.5, 0.5)
+maxfac = c(2,2)
+
+write_jules_design(paramlist, n = 10, fac = fac, minfac = minfac, maxfac = maxfac)
+
+
+# -----------------------------------------------------------
+# Development code from here on
+# -----------------------------------------------------------
 
 write_jules_design_bypft = function(paramlist, n, fnprefix = 'test',
                                     lhsfn = 'lhs.txt', rn = 3){
@@ -147,15 +227,6 @@ write_jules_design_bypft = function(paramlist, n, fnprefix = 'test',
 }
 
 
-
-# THINGS TO FIX
-
-# 1) rounding number is the same for all columns at the moment, 
-# which might not be appropriate for (e.g) the smaller numbers.
-# 2) This just does a per-pft latin hypercube, and we might well want to 
-# do a "by factor" lhs. In fact, we'll want to mix them, which will
-# be a pain
-
 write_jules_design_byparam = function(paramlist, n, minfac, maxfac, fnprefix = 'test',
                                       lhsfn = 'lhs.txt', rn = 3){
   
@@ -202,99 +273,6 @@ maxfac = rep(2, length(paramlist))
 write_jules_design_byparam(paramlist, minfac, maxfac, n = 10, rn = 3)
 
 write_jules_design_bypft(paramlist, n = 100, rn = 10)
-
-
-# Development and supporting code from this point on
-
-# Make a hybrid design - one where you can do it by parameter OR by PFT.
-
-write_jules_design = function(paramlist, n, fac, minfac, maxfac, fnprefix = 'test',
-                              lhsfn = 'lhs.txt', rn = 3){
-  
-  # fac is a character vector of names of variables that you would like to alter
-  # by a factor. Everything else gets variaed by PFT
-  # minfac and maxfac must correspond to fac - i.e. one value per parameter
-  paramvec = names(paramlist)
-  nmlvec = unlist(lapply(paramlist, FUN = function(x) x$namelist))
-  
-  # which parameters do we want as a parameter list?
-  fac.ix = which(names(paramlist) %in% fac)
-  paramfac = paramlist[fac.ix]
-  parampft = paramlist[-fac.ix]
-  pftvec = names(parampft)
-  
-  parampft_nml = unlist(lapply(parampft, FUN = function(x) x$namelist))
-  paramfac_nml = unlist(lapply(paramfac, FUN = function(x) x$namelist))
-  
-  parampft_standard = unlist(lapply(parampft, FUN = function(x) x$standard))
-  parampft_mins = unlist(lapply(parampft, FUN = function(x) x$min))
-  parampft_maxes = unlist(lapply(parampft, FUN = function(x) x$max))
-  
-  all_names = c(names(parampft_standard), fac)
-  k = length(all_names)
-  
-  # Do the pfts and then the factors
-  lhs = unnormalize(
-    maximinLHS(n = n, k = k, dup = 1),
-    un.mins = c(parampft_mins , minfac),
-    un.maxes = c(parampft_maxes, maxfac)
-  )
-  
-  colnames(lhs) = all_names
-  
-  # Now the pfts are just fine, but we need to multiply up
-  # the 'fac' part when we write it.
-  for(i in 1:nrow(lhs)){
-    
-    fn = paste0(fnprefix,i,'.txt')
-    
-    for(el in unique(nmlvec)){
-      write(paste0('[namelist:',el,']'), file = fn, append = TRUE)
-      
-      # grab the parts of the list that match
-      # BUG here!
-      pft_elms = parampft[parampft_nml==el] # & statement
-      pft_elms_vec = names(pft_elms)
-      
-      fac_elms = paramfac[paramfac_nml==el]
-      fac_elms_vec = names(fac_elms)
-      
-      if(length(pft_elms_vec) > 0){
-      for(j in 1:length(pft_elms_vec)){
-        param = pft_elms_vec[j]
-        colix = grep(param, colnames(lhs))
-        values.out = lhs[i, colix]
-        write(paste0(param,'=',(paste0(round(values.out,rn), collapse = ',')), collapse = ''),
-              file = fn, append = TRUE)
-        
-      }
-      }
-      
-      if(length(fac_elms_vec) > 0){
-        
-      for(k in 1: length(fac_elms_vec)){
-        param = fac_elms_vec[k]
-        colix = grep(param, colnames(lhs))
-        lhs.factor = lhs[i, colix]
-        values.out = lhs.factor * get(param, paramlist)$standard
-        write(paste0(param,'=',(paste0(round(values.out,rn), collapse = ',')), collapse = ''),
-              file = fn, append = TRUE)
-      }
-        
-      }
-      write('/', file = fn, append = TRUE)
-    }
-  }
-  write.matrix(lhs, file = lhsfn)
-}
-
-fac = c('g_root_io', 'retran_l_io')
-minfac = c(0.5, 0.5)
-maxfac = c(2,2)
-
-write_jules_design(paramlist, n = 10, fac = fac, minfac = minfac, maxfac = maxfac)
-
-
 
 # -----------------------------------------------------------------
 # This piece of code works if we are to alter all PFTs in a 
