@@ -135,7 +135,7 @@ write_jules_design = function(paramlist, n, fac, minfac, maxfac, tf, fnprefix = 
   all_names = c(names(parampft_standard), fac, tf)
   k = length(all_names)
   
-  # Do the pfts and then the factors
+  # Do the pfts and then the factors and then the logical
   lhs = unnormalize(
     maximinLHS(n = n, k = k, dup = 1),
     un.mins = c(parampft_mins , minfac, rep(0, length(tf))),
@@ -203,7 +203,9 @@ tf = 'l_veg_soil'
 write_jules_design(paramlist, n = 10, fac = fac, minfac = minfac, maxfac = maxfac, tf = tf)
 
 
-
+# -----------------------------------------------------------
+# Development code from here on
+# -----------------------------------------------------------
 
 write_jules_design = function(paramlist, n, fac, minfac, maxfac, fnprefix = 'test',
                               lhsfn = 'lhs.txt', rn = 3){
@@ -286,11 +288,6 @@ minfac = c(0.5, 0.5)
 maxfac = c(2,2)
 
 write_jules_design(paramlist, n = 10, fac = fac, minfac = minfac, maxfac = maxfac)
-
-
-# -----------------------------------------------------------
-# Development code from here on
-# -----------------------------------------------------------
 
 write_jules_design_bypft = function(paramlist, n, fnprefix = 'test',
                                     lhsfn = 'lhs.txt', rn = 3){
