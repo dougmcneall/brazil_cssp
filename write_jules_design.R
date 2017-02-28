@@ -80,6 +80,14 @@ sorp = list(
   'namelist' = 'jules_surface'
 )
 
+# test
+l_veg_soil = list(
+  'standard' = '.true.',
+  'min' = '.false.',
+  'max' = '.true.',
+  'namelist' = 'jules_soil'
+)
+
 paramlist = list('g_root_io' = g_root_io,
                  'g_wood_io' = g_wood_io,
                  'retran_l_io' = retran_l_io,
@@ -89,8 +97,112 @@ paramlist = list('g_root_io' = g_root_io,
                  'a_wl_io' = a_wl_io,
                  'kaps_roth' = kaps_roth,
                  'n_inorg_turnover' = n_inorg_turnover,
-                 'sorp' = sorp
+                 'sorp' = sorp,
+                 'l_veg_soil' = l_veg_soil
 )
+
+write_jules_design = function(paramlist, n, fac, minfac, maxfac, tf, fnprefix = 'test',
+                              lhsfn = 'lhs.txt', rn = 3){
+  # This code writes a design taking either a 'factor', min and max by which
+  # to multiply all pfts, or perturbing each pft individually according to
+  # their maximum and minimum in the parameter list.
+  # fac is a character vector of names of variables that you would like to alter
+  # by a factor. Everything else gets variaed by PFT
+  # minfac and maxfac must correspond to fac - i.e. one value per parameter, in the
+  # correct order.
+  # tf is a character vector containing the logical parameters
+  
+  paramvec = names(paramlist)
+  nmlvec = unlist(lapply(paramlist, FUN = function(x) x$namelist))
+  
+  # which parameters do we want as a parameter list?
+  fac.ix = which(names(paramlist) %in% fac)
+  tf.ix = which(names(paramlist) %in% tf)
+  
+  paramfac = paramlist[fac.ix]
+  paramtf = paramlist[tf.ix]
+  parampft = paramlist[-c(fac.ix, tf.ix)]
+  pftvec = names(parampft)
+  
+  parampft_nml = unlist(lapply(parampft, FUN = function(x) x$namelist))
+  paramfac_nml = unlist(lapply(paramfac, FUN = function(x) x$namelist))
+  paramtf_nml = unlist(lapply(paramtf, FUN = function(x) x$namelist))
+  
+  parampft_standard = unlist(lapply(parampft, FUN = function(x) x$standard))
+  parampft_mins = unlist(lapply(parampft, FUN = function(x) x$min))
+  parampft_maxes = unlist(lapply(parampft, FUN = function(x) x$max))
+  
+  all_names = c(names(parampft_standard), fac, tf)
+  k = length(all_names)
+  
+  # Do the pfts and then the factors
+  lhs = unnormalize(
+    maximinLHS(n = n, k = k, dup = 1),
+    un.mins = c(parampft_mins , minfac, rep(0, length(tf))),
+    un.maxes = c(parampft_maxes, maxfac, rep(1, length(tf)))
+  )
+  colnames(lhs) = all_names
+  
+  for(i in 1:nrow(lhs)){
+    fn = paste0(fnprefix,i,'.txt')
+    
+    for(el in unique(nmlvec)){
+      write(paste0('[namelist:',el,']'), file = fn, append = TRUE)
+      
+      # grab the parts of the list that match
+      pft_elms = parampft[parampft_nml==el] # & statement
+      pft_elms_vec = names(pft_elms)
+      fac_elms = paramfac[paramfac_nml==el]
+      fac_elms_vec = names(fac_elms)
+      tf_elms = paramtf[paramtf_nml==el]
+      tf_elms_vec = names(tf_elms)
+      
+      if(length(pft_elms_vec) > 0){
+        for(j in 1:length(pft_elms_vec)){
+          param = pft_elms_vec[j]
+          colix = grep(param, colnames(lhs))
+          values.out = lhs[i, colix]
+          write(paste0(param,'=',(paste0(round(values.out,rn), collapse = ',')), collapse = ''),
+                file = fn, append = TRUE)
+        }
+      }
+      
+      if(length(fac_elms_vec) > 0){
+        for(k in 1: length(fac_elms_vec)){
+          param = fac_elms_vec[k]
+          colix = grep(param, colnames(lhs))
+          lhs.factor = lhs[i, colix]
+          values.out = lhs.factor * get(param, paramlist)$standard
+          write(paste0(param,'=',(paste0(round(values.out,rn), collapse = ',')), collapse = ''),
+                file = fn, append = TRUE)
+        }
+      }
+      
+      if(length(tf_elms_vec) > 0){
+        for(l in 1: length(tf_elms_vec)){
+          param = tf_elms_vec[l]
+          colix = grep(param, colnames(lhs))
+          lhs.factor = lhs[i, colix]
+          logical.out = NA
+          if (lhs.factor>=0.5){logical.out = '.true.'}
+          else {logical.out = '.false.'}
+          write(paste0(param,'=',logical.out, collapse = ''), file = fn, append = TRUE)
+        }
+      }
+      write('/', file = fn, append = TRUE)
+    }
+  }
+  write.matrix(lhs, file = lhsfn)
+}
+
+fac = c('g_root_io', 'retran_l_io')
+minfac = c(0.5, 0.5)
+maxfac = c(2,2)
+tf = 'l_veg_soil'
+
+write_jules_design(paramlist, n = 10, fac = fac, minfac = minfac, maxfac = maxfac, tf = tf)
+
+
 
 
 write_jules_design = function(paramlist, n, fac, minfac, maxfac, fnprefix = 'test',
