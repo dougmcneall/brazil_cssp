@@ -1,4 +1,4 @@
-# Development and spare code for write_jule_design.R
+# Development and spare code for write_jules_design.R
 # Doug McNeall dougmcneall@gmail.com
 
 write_jules_design = function(paramlist, n, fac, minfac, maxfac, fnprefix = 'test',
