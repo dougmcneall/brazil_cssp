@@ -9,6 +9,7 @@ f0_io_frac = c(0.65, 0.972) / 0.875
 dz0v_dh_io_frac = c(0, 0.16) / 0.05
 nl0_io_frac = c(0, 0.12) / 0.04
 rootd_ft_io_frac = c(0, 8) /3
+# Not sure what 'psm' stands for.
 
 tupp_io = list(
   'standard' = c(43, 43, 43, 26, 32, 32, 32, 32, 45, 45, 45, 40, 36),
