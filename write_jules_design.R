@@ -11,7 +11,7 @@ source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtool
 # ----------------------------------------------------
 
 write_jules_design = function(paramlist, n, fac, minfac, maxfac, tf, fnprefix = 'test',
-                              lhsfn = 'lhs.txt', rn = 3){
+                              lhsfn = 'lhs.txt', rn = 5){
   # This code writes a design taking either a 'factor', min and max by which
   # to multiply all pfts, or perturbing each pft individually according to
   # their maximum and minimum in the parameter list.
@@ -20,6 +20,13 @@ write_jules_design = function(paramlist, n, fac, minfac, maxfac, tf, fnprefix = 
   # minfac and maxfac must correspond to fac - i.e. one value per parameter, in the
   # correct order.
   # tf is a character vector containing the logical parameters
+  
+  stopifnot(
+    all(
+      length(fac) == length(minfac),
+      length(fac) == length(maxfac)
+    )
+  )
   
   paramvec = names(paramlist)
   nmlvec = unlist(lapply(paramlist, FUN = function(x) x$namelist))

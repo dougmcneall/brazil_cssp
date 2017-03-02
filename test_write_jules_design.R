@@ -44,8 +44,8 @@ paramlist = list(
 )
 
 fac = c('param_b')
-minfac = c(0.5)
-maxfac = c(2)
+minfac = c(0.5, 0.2)
+maxfac = c(2, 2)
 tf = 'param_d'
 
 write_jules_design(paramlist, n = 10, fac = fac, minfac = minfac, maxfac = maxfac, tf = tf, rn = 5)
