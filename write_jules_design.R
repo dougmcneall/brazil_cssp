@@ -10,7 +10,7 @@ source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtool
 # Create a list of parameters
 # ----------------------------------------------------
 
-write_jules_design = function(paramlist, n, fac, minfac, maxfac, tf, fnprefix = 'test',
+write_jules_design = function(paramlist, n, fac, minfac, maxfac, tf, fnprefix = 'param-perturb-test',
                               lhsfn = 'lhs.txt', rn = 5){
   # This code writes a design taking either a 'factor', min and max by which
   # to multiply all pfts, or perturbing each pft individually according to
@@ -60,7 +60,7 @@ write_jules_design = function(paramlist, n, fac, minfac, maxfac, tf, fnprefix = 
   colnames(lhs) = all_names
   
   for(i in 1:nrow(lhs)){
-    fn = paste0(fnprefix,sprintf("%04d",i),'.txt')
+    fn = paste0(fnprefix,sprintf("%04d",i),'.conf')
     
     for(el in unique(nmlvec)){
       write(paste0('[namelist:',el,']'), file = fn, append = TRUE)
