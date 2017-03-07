@@ -4,7 +4,9 @@
 
 
 # Source design writing function
-source('https://raw.githubusercontent.com/dougmcneall/brazil_cssp/master/write_jules_design.R')
+#source('https://raw.githubusercontent.com/dougmcneall/brazil_cssp/master/write_jules_design.R')
+# It's probably easier and safer for testing to source the local file.
+source('write_jules_design.R')
 
 # Create some "dummy" parameters that are easy to test.
 param_a = list(
