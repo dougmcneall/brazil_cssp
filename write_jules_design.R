@@ -60,7 +60,7 @@ write_jules_design = function(paramlist, n, fac, minfac, maxfac, tf, fnprefix = 
   colnames(lhs) = all_names
   
   for(i in 1:nrow(lhs)){
-    fn = paste0(fnprefix,sprintf("%04d",i),'.conf')
+    fn = paste0(fnprefix,sprintf("%04d",i-1),'.conf')
     
     for(el in unique(nmlvec)){
       write(paste0('[namelist:',el,']'), file = fn, append = TRUE)
