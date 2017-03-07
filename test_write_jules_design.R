@@ -60,5 +60,5 @@ minfac = c(0.5, 0.5)
 maxfac = c(2,2)
 tf = 'l_veg_soil'
 
-write_jules_design(paramlist, n = 10, fac = fac, minfac = minfac, maxfac = maxfac, tf = tf)
+write_jules_design(paramlist, n = 100, fac = fac, minfac = minfac, maxfac = maxfac, tf = tf, fnprefix = 'param-perturb-test')
 
