@@ -90,5 +90,5 @@ paramlist = list('g_root_io' = g_root_io,
                  'kaps_roth' = kaps_roth,
                  'n_inorg_turnover' = n_inorg_turnover,
                  'sorp' = sorp,
-                 'l_vg_soil' = l_veg_soil
+                 'l_vg_soil' = l_vg_soil
 )
