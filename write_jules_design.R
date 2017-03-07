@@ -105,7 +105,7 @@ write_jules_design = function(paramlist, n, fac, minfac, maxfac, tf, fnprefix = 
           write(paste0(param,'=',logical.out, collapse = ''), file = fn, append = TRUE)
         }
       }
-      write('/', file = fn, append = TRUE)
+      write('\n', file = fn, append = TRUE)
     }
   }
   write.matrix(lhs, file = lhsfn)
