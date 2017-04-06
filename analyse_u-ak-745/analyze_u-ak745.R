@@ -1,0 +1,174 @@
+      # analyze_u-ak745.R
+
+## Try and build an emulator
+library(devtools)
+
+install_github(repo = "dougmcneall/hde")
+
+library(hde)
+library(RColorBrewer)
+library(fields)
+library(DiceEval)
+library(MASS)
+library(DiceKriging)
+
+source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtools.R")
+source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/imptools.R")
+source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/vistools.R")
+
+yg = brewer.pal(9, "YlGn")
+ryb = brewer.pal(9, "RdYlBu")
+byr = rev(ryb)
+
+#read data
+frac = read.table('forest_frac.txt', header = FALSE)
+lhs = read.table('lhs_u-ak745.txt', header = TRUE)
+
+forest_frac = frac[, 2]
+
+d = ncol(lhs)
+cn = colnames(lhs)
+
+lhs.norm = normalize(lhs)
+
+# Histogram of tropical forest fraction
+pdf(file = 'tropical_forest_fraction_hist.pdf', width = 6, height = 4)
+par(fg = 'white', las = 1)
+hist(forest_frac, col = 'grey', axes = FALSE, main = '', xlab = 'Tropical Forest Fraction')
+axis(1, col = 'black')
+axis(2, col = 'black')
+legend('topright',legend = 'LCCI observed forest fraction', pch = '|',
+       col = 'red', bty = 'n', pt.cex = 1.5, text.col = 'black')
+rug(0.33, lwd = 2, col = 'red')
+dev.off()
+
+
+# Lightweight plotting of the entire ensemble
+# dev.new(width = 8, height = 10)
+pdf(file = 'param_vs_tffraction.pdf', width = 8, height = 7)
+par(mfrow = c(7,11), mar = c(2,0.5,0.5,0.5))
+
+for(i in 1:d){
+  plot(lhs[, i], forest_frac, axes=FALSE, xlab = '', ylab = '', pch = 20, cex = 0.8)
+  mtext(side = 1, text = cn[i], line = 0.3, cex = 0.7)
+}
+dev.off()
+
+
+
+# km with a linear fit works
+fit = km(~., design = lhs.norm, response = forest_frac)
+
+pdf(file = 'xval.pdf', width = 5, height = 10)
+plot(fit)
+dev.off()
+
+n = 21
+X.oaat= oaat.design(lhs.norm, n, med = TRUE)
+y.oaat = predict(fit, newdata = X.oaat, type = 'UK')
+
+pdf(file = 'oaat.pdf', width = 8, height = 10)
+par(mfrow = c(7,11), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
+ylim = c(-0.12, 0.4)
+
+for(i in 1:d){
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  plot(X.oaat[ix,i], y.oaat$mean[ix],
+       type = 'l',
+       ylab= '', ylim = ylim, axes = FALSE)
+  #abline(v = 0, col = 'grey')
+  #abline(h = 0.4, col = 'grey')
+  mtext(1, text = colnames(lhs)[i], line = 0.2, cex = 0.7)
+}
+dev.off()
+
+# screen the top, say, 10 or 15 inputs
+
+sens.range = rep(NA,d)
+
+for(i in 1:d){
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  sens.range[i] = diff(range(y.oaat$mean[ix]))
+}
+
+
+ix.sorted = sort(sens.range, decreasing = TRUE, index.return = TRUE)$ix
+
+pdf(file = 'dot.pdf', width = 5, height = 10)
+#dev.new(width = 6, height = 12)
+dotchart(rev(sens.range[ix.sorted]), labels = rev(colnames(lhs)[ix.sorted]), cex = 0.7, pch = 19,
+         xlab = 'One-at-a-time response range')
+dev.off()
+
+# Just choose the top few
+ix.top = ix.sorted[1:12]
+
+# Sample from the emulator
+nsamp = 100000
+X.unif = samp.unif(nsamp, mins = rep(0,d), maxes = rep(1,d))
+colnames(X.unif) = colnames(lhs)
+pred.unif = predict(fit, newdata = X.unif, type = 'UK')
+
+
+ix.lowem  = which(pred.unif$mean < 0.15)
+ix.highem  = which(pred.unif$mean > 0.15)
+
+# how much space is rejected when we remove those samples without a functioning
+# forest?
+prop.rejected = length(ix.lowem) / nsamp
+
+
+kept = X.unif[ix.highem, ix.top]
+colnames(kept) = colnames(lhs)[ix.top]
+
+pdf(file = 'kept_hists.pdf', width = 8, height = 6)
+par(mfrow = c(3,4), fg = 'white')
+for(i in 1:(ncol(kept))){
+
+  hist(kept[,i], xlab = colnames(kept)[i], col = 'grey', main = '', cex.lab = 1.3,
+       ylim = c(0,3800)) 
+}
+dev.off()
+
+
+
+
+dfunc.up <- function(x,y,...){
+  require(MASS)
+  require(RColorBrewer)
+  
+  rb = brewer.pal(9, "RdBu")
+  br  = rev(rb)
+                                        # function for plotting 2d kernel density estimates in pairs() plot.
+  kde = kde2d(x,y)
+  image(kde, col = rb, add = TRUE)
+}
+
+rb = brewer.pal(9, "RdBu")
+br  = rev(rb)
+
+pdf(file = 'density.pdf', width = 8, height = 8)
+par(oma = c(0,0,0,3))
+test = pairs(X.unif[ix.highem, ix.top],
+      gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
+      panel = dfunc.up)
+
+image.plot(legend.only = TRUE,
+           zlim = c(0,1),
+           col = rb,
+           legend.args = list(text = 'Density of model runs with a forest', side = 3, line = 1),
+           horizontal = TRUE
+             )
+dev.off()
+
+
+
+#library(sensitivity)
+#x = fast99(model = NULL, factors = colnames(lhs), n = 5000,
+#            q = "qunif", q.arg = list(min = 0, max = 1))
+#fast.pred = predict(fit, newdata = x$X, type = 'UK')
+#fast <- tell(x, fast.pred$mean)
+#pdf(file = 'fast.pdf', width = 12, height = 6)
+#par(las = 2, mar = c(10,4,2,1))
+#plot(fast)
+#dev.off()
