@@ -1,0 +1,2 @@
+# global_mean_precip amazon_mean_precip congo_mean_precip seasia_mean_precip
+3.095741221134278639e-05 4.926016295145620150e-05 3.795496593578320539e-05 7.081126457336774115e-05
