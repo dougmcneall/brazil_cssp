@@ -1,0 +1,117 @@
+# write_jules_design.R
+# Write a design matrix and push the parameters to 
+# configuration files.
+
+library(lhs)
+library(MASS)
+source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtools.R")
+
+# ----------------------------------------------------
+# Create a list of parameters
+# ----------------------------------------------------
+
+write_jules_design = function(paramlist, n, fac, minfac, maxfac, tf, fnprefix = 'param-perturb-test',
+                              lhsfn = 'lhs.txt', rn = 5){
+  # This code writes a design taking either a 'factor', min and max by which
+  # to multiply all pfts, or perturbing each pft individually according to
+  # their maximum and minimum in the parameter list.
+  # fac is a character vector of names of variables that you would like to alter
+  # by a factor. Everything else gets variaed by PFT
+  # minfac and maxfac must correspond to fac - i.e. one value per parameter, in the
+  # correct order.
+  # tf is a character vector containing the logical parameters
+  
+  stopifnot(
+    all(
+      length(fac) == length(minfac),
+      length(fac) == length(maxfac)
+    )
+  )
+  
+  paramvec = names(paramlist)
+  nmlvec = unlist(lapply(paramlist, FUN = function(x) x$namelist))
+  
+  # which parameters do we want as a parameter list?
+  fac.ix = which(names(paramlist) %in% fac)
+  tf.ix = which(names(paramlist) %in% tf)
+  
+  paramfac = paramlist[fac.ix]
+  paramtf = paramlist[tf.ix]
+  parampft = paramlist[-c(fac.ix, tf.ix)]
+  pftvec = names(parampft)
+  
+  parampft_nml = unlist(lapply(parampft, FUN = function(x) x$namelist))
+  paramfac_nml = unlist(lapply(paramfac, FUN = function(x) x$namelist))
+  paramtf_nml = unlist(lapply(paramtf, FUN = function(x) x$namelist))
+  
+  parampft_standard = unlist(lapply(parampft, FUN = function(x) x$standard))
+  parampft_mins = unlist(lapply(parampft, FUN = function(x) x$min))
+  parampft_maxes = unlist(lapply(parampft, FUN = function(x) x$max))
+  
+  all_names = c(names(parampft_standard), fac, tf)
+  k = length(all_names)
+  
+  # Do the pfts and then the factors and then the logical
+  lhs = unnormalize(
+    maximinLHS(n = n, k = k, dup = 1),
+    un.mins = c(parampft_mins , minfac, rep(0, length(tf))),
+    un.maxes = c(parampft_maxes, maxfac, rep(1, length(tf)))
+  )
+  colnames(lhs) = all_names
+  
+  for(i in 1:nrow(lhs)){
+    fn = paste0(fnprefix,sprintf("%04d",i-1),'.conf')
+    
+    for(el in unique(nmlvec)){
+      write(paste0('[namelist:',el,']'), file = fn, append = TRUE)
+      
+      # grab the parts of the list that match
+      pft_elms = parampft[parampft_nml==el] # & statement
+      pft_elms_vec = names(pft_elms)
+      fac_elms = paramfac[paramfac_nml==el]
+      fac_elms_vec = names(fac_elms)
+      tf_elms = paramtf[paramtf_nml==el]
+      tf_elms_vec = names(tf_elms)
+      
+      if(length(pft_elms_vec) > 0){
+        for(j in 1:length(pft_elms_vec)){
+          param = pft_elms_vec[j]
+          colix = grep(param, colnames(lhs))
+          values.out = lhs[i, colix]
+          write(paste0(param,'=',(paste0(round(values.out,rn), collapse = ',')), collapse = ''),
+                file = fn, append = TRUE)
+        }
+      }
+      
+      if(length(fac_elms_vec) > 0){
+        for(k in 1: length(fac_elms_vec)){
+          param = fac_elms_vec[k]
+          colix = grep(param, colnames(lhs))
+          lhs.factor = lhs[i, colix]
+          values.out = lhs.factor * get(param, paramlist)$standard
+          write(paste0(param,'=',(paste0(round(values.out,rn), collapse = ',')), collapse = ''),
+                file = fn, append = TRUE)
+        }
+      }
+      
+      if(length(tf_elms_vec) > 0){
+        for(l in 1: length(tf_elms_vec)){
+          param = tf_elms_vec[l]
+          colix = grep(param, colnames(lhs))
+          lhs.factor = lhs[i, colix]
+          logical.out = NA
+          if (lhs.factor>=0.5){logical.out = '.true.'}
+          else {logical.out = '.false.'}
+          write(paste0(param,'=',logical.out, collapse = ''), file = fn, append = TRUE)
+        }
+      }
+      write('\n', file = fn, append = TRUE)
+    }
+  }
+  write.matrix(lhs, file = lhsfn)
+}
+
+
+
+
+
