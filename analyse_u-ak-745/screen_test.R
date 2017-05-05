@@ -124,13 +124,23 @@ X.oaat= oaat.design(lhs.norm, n, med = TRUE)
 y.oaat = predict(fit, newdata = X.oaat, type = 'UK')
 
 sens.range = rep(NA,d)
+sens.var = rep(NA,d)
 
 for(i in 1:d){
   ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
   sens.range[i] = diff(range(y.oaat$mean[ix]))
+  sens.var[i] = var(y.oaat$mean[ix])
 }
 
 ix.sorted = sort(sens.range, decreasing = TRUE, index.return = TRUE)$ix
+sens.range[ix.sorted]
+
+ix.sorted = sort(sens.var, decreasing = TRUE, index.return = TRUE)$ix
+plot(sens.var[ix.sorted])
+
+full.order.var = cn[ix.sorted]
+
+# It might be better to use variance as a measure of sensitivity.
 
 
 
@@ -239,11 +249,57 @@ for(i in 1:d){
 
 
 
+subvar = function(x, y, subsize, cutoff, reps){
+  
+  # choose subsets of the full input matrix,
+  # and summarise the sensitivity as we go.
+  
+  # pick a subset of inputs
+  # build a gp
+  # rank the effect size
+  # record the rank, keep the top ones and iterate
+  
+  d = ncol(x)
+  subranks = matrix(data = NA, nrow = reps, ncol = cutoff)
+  subvars  = matrix(data = NA, nrow = reps, ncol = cutoff)
+  
+  for(i in 1:reps){
+    
+    sub.ix = sample(1:d, size = subsize)
+    x.trunc = x[, sub.ix]
+    
+    fit = km(~., design = x.trunc, response = y)
+    
+    n = 21
+    x.oaat= oaat.design(x.trunc, n, med = TRUE)
+    y.oaat = predict(fit, newdata = x.oaat, type = 'UK')
+    
+    sens.var = rep(NA,subsize)
+    
+    for(j in 1:subsize){
+      ix = seq(from = ((j*n) - (n-1)), to =  (j*n), by = 1)
+      sens.var[j] = var(y.oaat$mean[ix])
+    }
+    ix.sorted = sort(sens.var, decreasing = TRUE, index.return = TRUE)$ix
+    subranks[i, ] = (sub.ix[ix.sorted])[1:cutoff]
+    subvars[i, ] =  (sens.var[ix.sorted])[1:cutoff]
+  }
+  
+  return(list(subranks = subranks, subvars = subvars))
+  
+}
+  
+
+test = subvar(x = lhs.norm, y = forest_frac, subsize = 15, cutoff = 5, reps = 300)
 
 
+varsum = rep(NA, 74)
+for(i in 1:74){
+  
+  varsum[i] = sum( test$subvars[test$subrank == i])
+}
 
-
-
+varsort = sort(varsum, decreasing = TRUE, index.return = TRUE)
 
 
 
