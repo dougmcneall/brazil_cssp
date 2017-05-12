@@ -290,7 +290,7 @@ subvar = function(x, y, subsize, cutoff, reps){
 }
   
 
-test = subvar(x = lhs.norm, y = forest_frac, subsize = 15, cutoff = 5, reps = 300)
+test = subvar(x = lhs.norm, y = forest_frac, subsize = 30, cutoff = 5, reps = 300)
 
 
 varsum = rep(NA, 74)
@@ -300,6 +300,50 @@ for(i in 1:74){
 }
 
 varsort = sort(varsum, decreasing = TRUE, index.return = TRUE)
+
+# Compare with a FAST sens
+library(sensitivity)
+xfast = fast99(model = NULL, factors = colnames(lhs.norm), n = 5000,
+            q = "qunif", q.arg = list(min = 0, max = 1))
+fast.pred = predict(fit, newdata = xfast$X, type = 'UK')
+fast <- tell(xfast, fast.pred$mean)
+#pdf(file = 'fast.pdf', width = 12, height = 6)
+par(las = 2, mar = c(10,4,2,1))
+plot(fast)
+#dev.off()
+
+fast.summary <- print(fast)
+
+fast.ix = sort(fast.summary[, 1], index.return = TRUE, decreasing = TRUE)$ix
+
+dotchart(rev(fast.summary[fast.ix,1]), labels = cn[rev(fast.ix)])
+
+
+
+
+dotchart(rev(sens.range[ix.sorted]), labels = rev(colnames(lhs)[ix.sorted]), cex = 0.7, pch = 19,
+         xlab = 'One-at-a-time response range')
+
+cn(fast.ix)[1:10]
+
+
+
+plot(varsort$x)
+points(fast.summary[varsort$ix, 1], col = 'red')
+
+
+plot(fast.summary[,1], varsum)
+
+# it looks like our sorting algorithm doesn't work very well :(
+plot(varsum, sens.var)
+
+# Interesting! It looks like the FAST algorithm produces a (first order) sensitivity measure
+# that is linearly proportional to the variance across the inputs, and non-linearly
+# proportional to the range across the inputs.
+plot(fast.summary[,1], sens.range)
+plot(fast.summary[,1], sens.var, col = 'red')
+
+plot(sens.var, sens.range)
 
 
 
