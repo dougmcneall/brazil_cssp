@@ -55,21 +55,21 @@ kaps_roth = list(
   'standard' = c(1.61E-07, 4.83E-09, 1.06E-08, 3.22E-10),
   'min' = 0.5 * c(1.61E-07, 4.83E-09, 1.06E-08, 3.22E-10),
   'max' = 2 * c(1.61E-07, 4.83E-09, 1.06E-08, 3.22E-10),
-  'namelist' = 'jules_surface'
+  'namelist' = 'jules_soil_biogeochem'
 )
 
 n_inorg_turnover = list(
   'standard' = 1,
   'min' = 0,
   'max' = 10,
-  'namelist' = 'jules_surface'
+  'namelist' = 'jules_soil_biogeochem'
 )
 
 sorp = list(
   'standard' = 10,
   'min' = 0,
   'max' = 20,
-  'namelist' = 'jules_surface'
+  'namelist' = 'jules_soil_biogeochem'
 )
 
 # test

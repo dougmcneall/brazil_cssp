@@ -76,8 +76,10 @@ onestep = function(x, y, reps, startsize){
   err_matrix
 }
 
-test = onestep(x = lhs.norm, y = forest_frac, reps = 5, startsize = 95)
+osa = onestep(x = lhs.norm, y = forest_frac, reps = 33, startsize = 77)
 
+osa_mean = apply(abs(osa), 1, mean)
+plot(osa_mean)
 
 
 library(glmnet)
