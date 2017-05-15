@@ -60,7 +60,8 @@ moon10hdc1 <- function(xx)
   return(y)
 }
 
-xx = maximinLHS(100, 20)
+xx = maximinLHS(500, 20)
+colnames(xx) <- paste0('x',1:d)
 
 y = apply(xx, 1, FUN = moon10hdc1)
 d = ncol(xx)
@@ -80,14 +81,38 @@ fit = km(~., design = xx, response = y)
 
 n = 21
 X.oaat= oaat.design(xx, n, med = TRUE)
-y.oaat = predict(fit, newdata = X.oaat, type = 'UK')
+colnames(X.oaat) <- colnames(xx)
+dk.oaat = predict(fit, newdata = X.oaat, type = 'UK')
+y.oaat = apply(X.oaat, 1, FUN = moon10hdc1)
+
+# Run the oaat output through the function so that we can compare the
+# emulator
+
+
+# plot the emulated oat output
+par(mfrow = c(5,4), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
+ylim = range(y.oaat)
+
+for(i in 1:d){
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  
+  
+  plot(X.oaat[ix,i], y.oaat[ix],
+       type = 'l',
+       ylab= '', ylim = ylim, axes = FALSE)
+  lines(X.oaat[ix,i], dk.oaat$mean[ix], col = 'red')
+  #abline(v = 0, col = 'grey')
+  #abline(h = 0.4, col = 'grey')
+  mtext(1, text = colnames(xx)[i], line = 0.2, cex = 0.7)
+}
+
 
 
 sens.var = rep(NA,d)
 for(i in 1:d){
   ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
   # sens.range[i] = diff(range(y.oaat$mean[ix]))
-  sens.var[i] = var(y.oaat$mean[ix])
+  sens.var[i] = var(dk.oaat$mean[ix])
 }
 
 
