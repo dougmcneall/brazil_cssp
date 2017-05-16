@@ -3,7 +3,6 @@
 
 library(DiceKriging)
 library(hde)
-library(DiceEval)
 library(MASS)
 library(sensitivity)
 library(lhs)
@@ -60,11 +59,13 @@ moon10hdc1 <- function(xx)
   return(y)
 }
 
-# Generate a MMLHS sample from the test function
-xx = maximinLHS(10, 20)
+# Generate a MMLHS sample from the test function.
+# Include a dummy variable
+d = 21
+xx = maximinLHS(50, d)
+xt = xx[, 1:(d-1)]
+y = apply(xt, 1, FUN = moon10hdc1)
 colnames(xx) <- paste0('x',1:d)
-y = apply(xx, 1, FUN = moon10hdc1)
-d = ncol(xx)
 
 # A plot of each input in turn, plotted against the output
 #dev.new(width = 10, height = 5)
@@ -88,7 +89,7 @@ y.oaat = apply(X.oaat, 1, FUN = moon10hdc1)
 
 
 # plot the emulated oat output and true function
-par(mfrow = c(5,4), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
+par(mfrow = c(7,3), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
 ylim = range(y.oaat)
 
 for(i in 1:d){
@@ -109,8 +110,10 @@ for(i in 1:d){
 
 # do this for the true function too
 active.ix = c(1,7,12,18,19)
+dummy.ix = 21
 colvec = rep(1,d)
 colvec[active.ix] = 2
+colvec[dummy.ix] = 4
 plot(sens.var, col = colvec, pch = 19)
 
 
@@ -125,7 +128,12 @@ subvar = function(x, y, subsize, cutoff, reps){
   # record the rank, keep the top ones and iterate
   
   d = ncol(x)
+  # subranks contains the index of the input which has the
+  # largest effect (measured by variance of output)
   subranks = matrix(data = NA, nrow = reps, ncol = cutoff)
+  
+  # subvars is the measure of the effect size for the [cutoff] inputs
+  # with the largest effect size
   subvars  = matrix(data = NA, nrow = reps, ncol = cutoff)
   
   for(i in 1:reps){
@@ -154,13 +162,25 @@ subvar = function(x, y, subsize, cutoff, reps){
   
 }
 
-test = subvar(x = xx, y = y, subsize = 5, cutoff = 2, reps = 200)
+test = subvar(x = xx, y = y, subsize = 6, cutoff = 3, reps = 1000)
 
 varsum = rep(NA, d)
+varmean = rep(NA, d)
+varvar = rep(NA, d)
+varsamp = rep(NA, d)
 for(i in 1:d){
   
-  varsum[i] = sum( test$subvars[test$subrank == i])
+  varsum[i] = sum(test$subvars[test$subrank == i], na.rm = TRUE)
+  varmean[i] = mean( test$subvars[test$subrank == i], na.rm = TRUE)
+  
+  
+  varvar[i] = var( test$subvars[test$subrank == i])
+  varsamp[i] = length(test$subvars[test$subrank == i])
 }
+
+plot(varsum, col = colvec, pch = 19)
+#plot(varvar, col = colvec, pch = 19)
+
 
 varsort = sort(varsum, decreasing = TRUE, index.return = TRUE)
 
