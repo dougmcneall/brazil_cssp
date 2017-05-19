@@ -3,6 +3,11 @@
 # a reduced subset of inputs? We'll try and find the best
 # set to build the emulator with.
 
+# Result: We compare the reduction in MAE as we add ordered (by importance) inputs
+# with randomly chosen inputs. The ordered inputs have lower absoliute error, and reduces
+# to an error floor more rapidly, after adding around 40-50 inputs.
+# This is a larger number of inputs to hit bottom than I expected!
+
 library(DiceKriging)
 library(hde)
 library(MASS)
@@ -76,6 +81,13 @@ for(i in 2:d){
   mae.rand[i] = mean(abs(err))
 }
 
+par(las = 1)
+plot(mae.rand, xlab = 'No. included inputs', ylab = 'Mean absolute error',
+     pch = 19, col = 'black',
+     ylim = c(0, max(mae.rand, na.rm = TRUE))
+      )
+points(mae, col = 'red', pch = 19)
+legend('topright', c('Random', 'Ordered'), pch = 19, col = c('black', 'red'))
 
 
 
