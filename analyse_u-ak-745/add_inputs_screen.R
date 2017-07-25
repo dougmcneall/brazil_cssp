@@ -81,13 +81,82 @@ for(i in 2:d){
   mae.rand[i] = mean(abs(err))
 }
 
+
+dev.new(width = 4, height = 6)
 par(las = 1)
-plot(mae.rand, xlab = 'No. included inputs', ylab = 'Mean absolute error',
+plot(2:74, mae.rand[2:74], xlab = 'No. included inputs', ylab = 'Mean absolute error',
      pch = 19, col = 'black',
      ylim = c(0, max(mae.rand, na.rm = TRUE))
       )
-points(mae, col = 'red', pch = 19)
+points(mae[2:74], col = 'red', pch = 19)
 legend('topright', c('Random', 'Ordered'), pch = 19, col = c('black', 'red'))
+
+# which model has the minimum absolute error?
+
+wmin = which.min(mae)
+
+# repeat the whole analysis
+
+x.trunc1 = lhs.norm[, ix.sorted[1:wmin]]
+
+fit = km(~., design = x.trunc1, response = forest_frac)
+n = 21
+X.oaat= oaat.design(x.trunc1, n, med = TRUE)
+y.oaat = predict(fit, newdata = X.oaat, type = 'UK')
+
+sens.var = rep(NA,d)
+
+for(i in 1:d){
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  sens.var[i] = var(y.oaat$mean[ix])
+}
+
+ix.sorted = sort(sens.var, decreasing = TRUE, index.return = TRUE)$ix
+plot(sens.var[ix.sorted])
+
+mae = rep(NA, ncol(x.trunc1))
+for(i in 2:d){
+  
+  lhs.trunc = x.trunc1[, ix.sorted[1:i]]
+  fit = km(~., design = lhs.trunc, response = forest_frac)
+  loo =  leaveOneOut.km(fit, type = 'UK')
+  err = loo$mean - forest_frac
+  mae[i] = mean(abs(err))
+}
+
+# Now we are down to ~ 50 that make a difference to the emulator fit!
+
+x.trunc2 = x.trunc1[ ,ix.sorted[1:50]]
+
+fit = km(~., design = x.trunc2, response = forest_frac)
+n = 21
+X.oaat= oaat.design(x.trunc2, n, med = TRUE)
+y.oaat = predict(fit, newdata = X.oaat, type = 'UK')
+
+
+par(mfrow = c(5,10), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
+ylim = c(-0.12, 0.4)
+
+for(i in 1:ncol(x.trunc2)){
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  plot(X.oaat[ix,i], y.oaat$mean[ix],
+       type = 'l',
+       ylab= '', ylim = ylim, axes = FALSE)
+  #abline(v = 0, col = 'grey')
+  #abline(h = 0.4, col = 'grey')
+  mtext(1, text = colnames(x.trunc2)[i], line = 0.2, cex = 0.7)
+}
+
+sens.var = rep(NA,ncol(x.trunc2))
+
+for(i in 1:ncol(x.trunc2)){
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  sens.var[i] = var(y.oaat$mean[ix])
+}
+
+plot(sens.var)
+
+
 
 
 
