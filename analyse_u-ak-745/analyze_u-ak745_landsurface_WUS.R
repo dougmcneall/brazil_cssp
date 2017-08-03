@@ -68,7 +68,6 @@ pairs(dat, upper.panel = NULL, xlim = c(0,0.2), ylim = c(0,0.2))
 #dev.off()
 
 
-
 codet = function(x1, x2){
   fit = lm(x1~x2)
   summary(fit)$r.squared
