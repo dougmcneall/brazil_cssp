@@ -86,26 +86,44 @@ dotchart((NLE.sensvar[ix.sorted])[1:10], labels = (colnames(lhs)[ix.sorted])[1:1
 x.unif = samp.unif(100000, mins = rep(0, ncol(lhs)), maxes = rep(1, ncol(lhs)) )
 pred.unif = predict(NLE.mae.wus.fit, newdata = x.unif, type = 'UK')
 
+dev.new(width = 8, height = 8)
+pdf(file = 'NLE_MAE_WUS.pdf', width = 8, height = 8)
+par(mfrow = c(2,2))
+
 quilt.plot(x = x.unif[ , ix.sorted[1]],
            y = x.unif[, ix.sorted[2]],
            z = pred.unif$mean,
            xlab = colnames(lhs)[ix.sorted[1]],
-           ylab = colnames(lhs)[ix.sorted[2]]
+           ylab = colnames(lhs)[ix.sorted[2]],
+           col = byr
            )
 
 quilt.plot(x = x.unif[ , ix.sorted[3]],
            y = x.unif[, ix.sorted[4]],
            z = pred.unif$mean,
            xlab = colnames(lhs)[ix.sorted[3]],
-           ylab = colnames(lhs)[ix.sorted[4]]
+           ylab = colnames(lhs)[ix.sorted[4]],
+           col = byr
 )
 
 quilt.plot(x = x.unif[ , ix.sorted[5]],
            y = x.unif[, ix.sorted[6]],
            z = pred.unif$mean,
            xlab = colnames(lhs)[ix.sorted[5]],
-           ylab = colnames(lhs)[ix.sorted[6]]
+           ylab = colnames(lhs)[ix.sorted[6]],
+           col = byr
 )
+
+quilt.plot(x = x.unif[ , ix.sorted[7]],
+           y = x.unif[, ix.sorted[8]],
+           z = pred.unif$mean,
+           xlab = colnames(lhs)[ix.sorted[7]],
+           ylab = colnames(lhs)[ix.sorted[8]],
+           col = byr
+)
+dev.off()
+
+
 
 
 
