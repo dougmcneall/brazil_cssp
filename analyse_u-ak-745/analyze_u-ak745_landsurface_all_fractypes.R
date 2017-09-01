@@ -1,7 +1,7 @@
 setwd("/Users/dougmcneall/Documents/work/R/brazil_cssp/analyse_u-ak-745")
 
 library(devtools)
-install_github(repo = "dougmcneall/hde")
+#install_github(repo = "dougmcneall/hde")
 
 library(hde)
 library(RColorBrewer)
@@ -18,7 +18,6 @@ ryb = brewer.pal(11, "RdYlBu")
 byr = rev(ryb)
 rb = brewer.pal(11, "RdBu")
 br = rev(rb)
-
 
 sensvar = function(oaat.pred, n, d){
   # Calculate variance as a global sensitivity meansure
@@ -40,6 +39,16 @@ globalresponse = function(oaat.pred, n, d){
   out
 }
 
+globalresponse.lm = function(oaat.pred, n, d){
+  # Calculate the effect of turning the parameterfrom lowest to highest
+  out = rep(NA,d)
+  for(i in 1:d){
+    ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+    out[i] = (oaat.pred[ix[n]] - oaat.pred[ix[1]])
+  }
+  out
+}
+
 cutoff <- function(dat, zlim){
   # Function to cut off data at thresholds for plotting
   out <- dat
@@ -55,19 +64,36 @@ globalsens <- function(lhs, response.list){
   
   n = 21
   X.oaat = oaat.design(lhs.norm, n, med = TRUE)
+  colnames(X.oaat) = colnames(lhs)
   
   oaat.globalresponse = matrix(NA, nrow = d, ncol = length(response.list))
   for(i in 1: length(global_area_means.list)){
-    
+    print(i)
     try({
-    fit = km(~., design = lhs.norm, response = c(response.list[i], recursive = TRUE) )
-    oaat.pred = predict(fit, newdata = X.oaat, type = 'UK')
-    oaat.globalresponse[,i] = globalresponse(oaat.pred, n = n, d = d)
+    y = c(response.list[i], recursive = TRUE)
+    
+    dat = data.frame(y=y, x=lhs.norm)
+    colnames(dat) = c('y', colnames(lhs))
+    
+    initfit = lm(y ~ ., data = dat)
+    stepfit = step(initfit, direction="both", k=log(length(y)), trace=TRUE)
+    
+    n = 21
+    X.oaat = oaat.design(lhs.norm, n, med = TRUE)
+    colnames(X.oaat) = colnames(lhs)
+    oaat.pred = predict(stepfit, newdata = data.frame(X.oaat))
+    oaat.globalresponse[,i] = globalresponse.lm(oaat.pred, n = n, d = d)
     },
     silent = TRUE)
     
+    # try({
+    #   fit = km(~., design = lhs.norm, response = c(response.list[i], recursive = TRUE) )
+    #   oaat.pred = predict(fit, newdata = X.oaat, type = 'UK')
+    #   oaat.globalresponse[,i] = globalresponse(oaat.pred, n = n, d = d)
+    #   },
+    #   silent = TRUE)
+    # }
   }
-  
   out <- oaat.globalresponse
   out
 }
@@ -111,15 +137,30 @@ d <- ncol(lhs)
 cn <- colnames(lhs)
 lhs.norm <- normalize(lhs)
 
+
+# Backup, build the global sensitivity analysis first
+# y = c(global_area_means.list[1], recursive = TRUE)
+# dat = data.frame(y=y, x=lhs.norm)
+# colnames(dat) = c('y', colnames(lhs))
+# 
+# initfit = lm(y ~ ., data = dat)
+# stepfit = step(initfit, direction="both", k=log(length(y)), trace=TRUE)
+# 
+# n = 21
+# X.oaat = oaat.design(lhs.norm, n, med = TRUE)
+# colnames(X.oaat) = colnames(lhs)
+# oaat.pred = predict(stepfit, newdata = data.frame(X.oaat))
+# oaat.globalresponse = globalresponse.lm(oaat.pred, n = n, d = d)
+
 global.sensmat <- globalsens(lhs, global_area_means.list)
 wus.sensmat <- globalsens(lhs, wus_area_means.list)
 sam.sensmat <- globalsens(lhs, sam_area_means.list)
 
 global.sensmat.co <- cutoff(global.sensmat, c(-0.09, 0.09))
 
-pdf(file = 'response_summary_global.pdf', width = 12, height = 6)
+pdf(file = 'response_summary_step_global.pdf', width = 12, height = 6)
 par(mar = c(8,7,4,7))
-image(global.sensmat.co, col = br, axes = FALSE)
+image(global.sensmat.co, col = br, axes = FALSE, main = 'Global')
 axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
 axis(2, at = seq(from =0, to = 1, by = 1/16) , labels = surftypes, las = 1)
 
@@ -128,20 +169,19 @@ dev.off()
 
 wus.sensmat.co <- cutoff(wus.sensmat, c(-0.09, 0.09))
 
-pdf(file = 'response_summary_wus.pdf', width = 12, height = 6)
+pdf(file = 'response_summary_step_wus.pdf', width = 12, height = 6)
 par(mar = c(8,7,4,7))
-image(wus.sensmat.co, col = br, axes = FALSE)
+image(wus.sensmat.co, col = br, axes = FALSE, main = 'Western US')
 axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
 axis(2, at = seq(from =0, to = 1, by = 1/16) , labels = surftypes, las = 1)
 
 image.plot(wus.sensmat.co, col = br,legend.only = TRUE)
 dev.off()
 
-
 sam.sensmat.co <- cutoff(sam.sensmat, c(-0.09, 0.09))
-pdf(file = 'response_summary_sam.pdf', width = 12, height = 6)
+pdf(file = 'response_summary_step_sam.pdf', width = 12, height = 6)
 par(mar = c(8,7,4,7))
-image(sam.sensmat.co, col = br, axes = FALSE)
+image(sam.sensmat.co, col = br, axes = FALSE, main = 'South America')
 axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
 axis(2, at = seq(from =0, to = 1, by = 1/16) , labels = surftypes, las = 1)
 
@@ -195,7 +235,7 @@ dev.off()
 global.sens.summary <- apply(abs(global.sensmat),1, sum, na.rm = TRUE)
 global.sens.ix <- order(global.sens.summary, decreasing = TRUE)
 
-pdf(width = 12, height = 5, file = 'global_summary_sam.pdf')
+pdf(width = 12, height = 5, file = 'sens_summary_global.pdf')
 par(mar = c(7,5,3,2))
 plot(global.sens.summary[global.sens.ix], axes = FALSE, 
      xlab = '', ylab = 'Sensitivity summary', ylim = c(0,0.5))
