@@ -1,6 +1,8 @@
 # test_ds_emulator
 # Testing David Sexton's emulator approach.
 # Conclusion: it seems to make a more robust emulator.
+# An upshot of this is: I've discovered that the GP emulator
+# is just returning a linear model
 
 setwd("/Users/dougmcneall/Documents/work/R/brazil_cssp/analyse_u-ak-745")
 
@@ -23,6 +25,41 @@ ryb = brewer.pal(11, "RdYlBu")
 byr = rev(ryb)
 rb = brewer.pal(11, "RdBu")
 br = rev(rb)
+
+true.loo = function(X,y, lm = FALSE){
+  out.mean = rep(NA, length(y))
+  out.sd = rep(NA, length(y))
+  
+  for(i in 1:nrow(X)){
+    X.trunc = X[-i, ]
+    y.trunc = y[-i]
+    
+    X.target = matrix(X[i, ], nrow = 1)
+    colnames(X.target) <- colnames(X)
+    X.target.df = data.frame(X.target)
+    
+    
+    if(lm){
+      data.trunc = data.frame(y.trunc, X.trunc)
+      colnames(data.trunc) = c('y', colnames(X.trunc))
+      fit = lm(y~., data = data.trunc)
+      pred = predict(fit, newdata = X.target.df)
+      out.mean[i] = pred
+    }
+    else{
+    
+    fit = km(~., design = X.trunc, response = y.trunc)
+    pred = predict(fit,newdata = X.target, type = 'UK')
+    out.mean[i] = pred$mean
+    out.sd[i = pred$sd]
+    }
+    
+
+  }
+  return(list(mean = out.mean, sd = out.sd))
+}
+
+
 
 loo.rmse = function(loo,y){
   out = sqrt(mean((loo$mean - y)^2))
@@ -47,7 +84,7 @@ plot(y, loo.box$mean)
 loo.rmse(loo.box, y)
 loo.rmse(loo.box.noreestim, y)
 
-m.box.nugget = km(~., design=X, response=y, nugget.estim = TRUE)
+m.box.nugget = km(~., design=X, response=y, nugget = 0.01)
 
 # source('makeccEm.R')
 
@@ -110,11 +147,12 @@ if (length(labels) > 0) {
 print("Step has found formula:")
 print(start.form)
 if (!is.null(seed)) {set.seed(seed)}
+nugget = 0.01
 m.step = km(start.form, design=X, response=y, nugget=nugget, parinit=coefs0,
        nugget.estim=nuggetEstim, noise.var=noiseVar, control=control_list)
 
 
-loo.step = leaveOneOut.km(m, type = 'UK', trend.reestim = TRUE)
+loo.step = leaveOneOut.km(m.step, type = 'UK', trend.reestim = TRUE)
 loo.step.noreestim = leaveOneOut.km(m.step, type = 'UK', trend.reestim = FALSE)
 
 plot(y, loo.box$mean)
@@ -181,7 +219,7 @@ twoStep = function(X, y, nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, seed=NUL
   
 }
 
-twostep = twoStep(X, y, nuggetEstim = TRUE, maxit = 1000)
+twostep = twoStep(X, y, nugget = 0.001, nuggetEstim = FALSE, maxit = 1000)
 
 twostep.fit = twostep$emulator
 twostep.lm = twostep$steplm
@@ -205,12 +243,22 @@ for(i in 1:d){
   plot(X.oaat[ix,i], y.oaat$mean[ix],
        type = 'l',
        ylab= '', ylim = ylim, axes = FALSE, lwd = 2)
+  
+  points(X.oaat[ix,i], y.oaat$mean[ix] + y.oaat$sd[ix] ,
+       type = 'l', lwd = 2, col = 'grey')
+  
+  points(X.oaat[ix,i], y.oaat$mean[ix] - y.oaat$sd[ix] ,
+         type = 'l', lwd = 2, col = 'grey')
+  
+  
   points(X.oaat[ix,i], y.oaat.ts.lm[ix], type = 'l', col = 'red')
   #abline(v = 0, col = 'grey')
   #abline(h = 0.4, col = 'grey')
   mtext(1, text = colnames(lhs)[i], line = 0.2, cex = 0.7)
 }
 dev.off()
+
+
 
 pdf(file = 'oaat_twostep_lm.pdf', width = 8, height = 10)
 par(mfrow = c(7,11), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
@@ -240,7 +288,6 @@ y.oaat.box = predict(m.box, newdata = X.oaat, type = 'UK')
 
 steplm.fit = step(fit.lm, direction="both", k=log(length(y)), trace=TRUE)
 
-
 pdf(file = 'oaat_lm.pdf', width = 8, height = 10)
 par(mfrow = c(7,11), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
 ylim = c(-0.12, 0.4)
@@ -257,41 +304,138 @@ for(i in 1:d){
 }
 dev.off()
 
-# Can't get this to work
-#resid = steplm.fit$residuals
-#fit.steplm.resid = km(~1, design = X, response = resid )
+# -------------------------------------------------------------
+# Illustrate the problem
+# -------------------------------------------------------------
+
+# 1. Construct a stepwise linear model
+data = data.frame(response=y, x=X)
+colnames(data) <- c("response", xvars)
+nval = length(y)
+d = ncol(X)
 
 
-# This shows promise - make it two-step?
-# Which inputs do we select?
-subs = labels(terms(steplm.fit))
-subs.ix = which(colnames(X) %in% subs)
+start.form = as.formula(paste("y ~ ", paste(xvars, collapse= "+")))
+
+# use BIC so that model is parsimonious and allow GP to pick up any other behaviour not
+# explained by the key linear terms      
+startlm = lm(start.form, data=data)
+#      print('before step')
+#      print(startlm)
+steplm = step(startlm, direction="both", k=log(nval), trace=TRUE)
+
+n = 21
+X.oaat= oaat.design(X, n, med = TRUE)
+colnames(X.oaat) <- colnames(X)
+X.oaat.df = data.frame(X.oaat)
+
+y.startlm.oaat = predict(startlm, newdata = X.oaat.df)
+y.steplm.oaat = predict(steplm, newdata = X.oaat.df)
+
+# The stepwise linear model alters some of the sensitivities
+# and sets others to zero.
+pdf(file = 'oaat_lm_step.pdf', width = 8, height = 10)
+par(mfrow = c(7,11), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
+ylim = c(-0.12, 0.4)
+
+for(i in 1:d){
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  plot(X.oaat[ix,i], y.startlm.oaat[ix],
+       type = 'l',
+       ylab= '', ylim = ylim, axes = FALSE)
+  
+  points(X.oaat[ix,i], y.steplm.oaat[ix],
+       type = 'l', col='red')
+  
+  mtext(1, text = colnames(lhs)[i], line = 0.2, cex = 0.7)
+}
+dev.off()
+
+
+# We can find the steplm coefficients that it keeps, and extract the relevant
+# columns from the data matrix
+subterms = attr(terms(steplm),"term.labels")
+subs.ix = which(colnames(X) %in% subterms)
 
 X.subs = X[, subs.ix]
+data.subs = data.frame(y, X.subs)
+colnames(data.subs) = c('y', colnames(X.subs))
 
-test = km(~1, design = X.subs, response = y)
+# Linear model with the chosen subset of inputs
+sublm = lm(y~., data = data.subs)
 
-X.subs.oaat = oaat.design(X.subs, n, med = TRUE)
-colnames(X.subs.oaat) = colnames(X.subs)
-y.subs.oaat = predict(test, newdata = X.subs.oaat, type = 'UK')
+# If we run step a second time, nothing should happen, right?
+sublm.step = step(sublm, direction="both", k=log(nval), trace=TRUE)
+# I think ordering changes
 
-d.subs = ncol(X.subs.oaat)
+# Create a one-at-a-time subset input design
+X.subs.oaat= oaat.design(X.subs, n, med = TRUE)
+colnames(X.subs.oaat) <- colnames(X.subs)
+X.subs.oaat.df = data.frame(X.subs.oaat)
 
+y.subs.oaat = predict(sublm, newdata = X.subs.oaat.df)
+
+subskm0 = km(y~1, design = X.subs, response = y)
+subskm = km(y~., design = X.subs, response = y, parinit=subskm0@covariance@range.val)
+
+y.subskm0.oaat = predict(subskm0, newdata = X.subs.oaat, type = 'UK')
+y.subskm.oaat = predict(subskm, newdata = X.subs.oaat, type = 'UK')
+
+
+d.sub = ncol(X.subs)
+
+# This confirms that the step lm and the lm given the subset give the same
+# results, and that they are both the same as the km given the subsets (it just returns a linear model)
 pdf(file = 'oaat_subs.pdf', width = 8, height = 10)
 par(mfrow = c(7,11), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
 ylim = c(-0.12, 0.4)
 
-for(i in 1:d.subs){
+for(i in 1:d.sub){
   ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
-  plot(X.subs.oaat[ix,i], y.subs.oaat$mean[ix],
+  
+  ix.subs = seq(from = ((subs.ix[i]*n) - (n-1)), to =  (subs.ix[i]*n), by = 1)
+  print(ix.subs)
+  
+  plot(X.subs.oaat[ix,i], y.subs.oaat[ix],
        type = 'l',
        ylab= '', ylim = ylim, axes = FALSE, lwd = 2)
-  #points(X.oaat[ix,i], y.oaat.box$mean[ix], col = 'red', type = 'l')
-  #abline(v = 0, col = 'grey')
-  #abline(h = 0.4, col = 'grey')
-  mtext(1, text = colnames(lhs)[i], line = 0.2, cex = 0.7)
+  
+  points(X.subs.oaat[ix,i], y.subskm0.oaat$mean[ix],
+         type = 'l', col='darkred')
+  
+  points(X.subs.oaat[ix,i], y.subskm0.oaat$mean[ix] + y.subskm0.oaat$sd[ix],
+         type = 'l', col='tomato')
+  
+  points(X.subs.oaat[ix,i], y.subskm0.oaat$mean[ix] - y.subskm0.oaat$sd[ix],
+         type = 'l', col='tomato')
+  
+  points(X.subs.oaat[ix,i], y.subskm.oaat$mean[ix],
+         type = 'l', col='blue')
+  
+  points(X.oaat[ix.subs, subs.ix[i]], y.steplm.oaat[ix.subs],
+         type = 'l', col='grey')
+  
+  mtext(1, text = colnames(X.subs)[i], line = 0.2, cex = 0.7)
 }
 dev.off()
+
+# Now, include the stuff from steplm too.
+
+lm.loo = true.loo(X = X.subs, y = y, lm = TRUE)
+y.subskm0.loo = leaveOneOut.km(subskm0,trend.reestim = TRUE, type = 'UK') 
+y.subskm.loo = leaveOneOut.km(subskm,trend.reestim = TRUE, type = 'UK') 
+
+plot(y, lm.loo$mean)
+points(y, y.subskm0.loo$mean, col = 'red')
+points(y, y.subskm.loo$mean, col = 'blue')
+abline(0,1)
+
+# It LOOKS like the flat prior is better
+loo.rmse(lm.loo, y)
+loo.rmse(y.subskm0.loo, y)
+
+
+
 
 
 
