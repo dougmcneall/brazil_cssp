@@ -244,6 +244,61 @@ axis(2, las = 1)
 dev.off()
 
 
+# Now graphics which combine the two measures - per land surface type and
+# across all land surface types.
+
+pdf(file = 'response_summary_step_global_both_measures.pdf', width = 12, height = 8)
+par(mar = c(4,7,2,7), mfrow = c(2,1), oma = c(3,0,0,0))
+image(global.sensmat.co, col = br, axes = FALSE, main = 'Global')
+axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
+axis(2, at = seq(from =0, to = 1, by = 1/16) , labels = surftypes, las = 1)
+
+image.plot(global.sensmat.co, col = br,legend.only = TRUE)
+
+plot(global.sens.summary[global.sens.ix], axes = FALSE, 
+     xlab = '', ylab = 'Sensitivity summary', ylim = c(0,0.5))
+axis(1, labels=(colnames(lhs))[global.sens.ix], at = 1:length(global.sens.summary), las = 3, cex.axis = 0.8 )
+axis(2, las = 1)
+
+dev.off()
+
+
+pdf(width = 12, height = 8, file = 'response_summary_step_sam_both_measures.pdf')
+par(mar = c(4,7,2,7), mfrow = c(2,1), oma = c(3,0,0,0))
+
+image(sam.sensmat.co, col = br, axes = FALSE, main = 'South America')
+axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
+axis(2, at = seq(from =0, to = 1, by = 1/16) , labels = surftypes, las = 1)
+
+image.plot(sam.sensmat.co, col = br,legend.only = TRUE)
+
+plot(sam.sens.summary[sam.sens.ix], axes = FALSE, 
+     xlab = '', ylab = 'Sensitivity summary', ylim = c(0,1))
+axis(1, labels=(colnames(lhs))[sam.sens.ix], at = 1:length(sam.sens.summary), las = 3, cex.axis = 0.8 )
+axis(2, las = 1)
+
+dev.off()
+
+
+pdf(width = 12, height = 8, file = 'response_summary_step_wus_both_measures.pdf')
+par(mar = c(4,7,2,7), mfrow = c(2,1), oma = c(3,0,0,0))
+image(wus.sensmat.co, col = br, axes = FALSE, main = 'Western US')
+axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
+axis(2, at = seq(from =0, to = 1, by = 1/16) , labels = surftypes, las = 1)
+
+image.plot(wus.sensmat.co, col = br,legend.only = TRUE)
+plot(wus.sens.summary[wus.sens.ix], axes = FALSE, 
+     xlab = '', ylab = 'Sensitivity summary', ylim = c(0,0.3))
+axis(1, labels=(colnames(lhs))[wus.sens.ix], at = 1:length(wus.sens.summary), las = 3, cex.axis = 0.8 )
+axis(2, las = 1)
+
+dev.off()
+
+
+
+
+
+
 
 
 

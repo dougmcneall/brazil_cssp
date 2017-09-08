@@ -288,8 +288,8 @@ y.oaat.box = predict(m.box, newdata = X.oaat, type = 'UK')
 
 steplm.fit = step(fit.lm, direction="both", k=log(length(y)), trace=TRUE)
 
-pdf(file = 'oaat_lm.pdf', width = 8, height = 10)
-par(mfrow = c(7,11), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
+pdf(file = 'oaat_lm.pdf', width = 10, height = 6)
+par(mfrow = c(6,13), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
 ylim = c(-0.12, 0.4)
 
 for(i in 1:d){
@@ -297,11 +297,16 @@ for(i in 1:d){
   plot(X.oaat[ix,i], y.oaat.lm[ix],
        type = 'l',
        ylab= '', ylim = ylim, axes = FALSE, lwd = 2)
-  points(X.oaat[ix,i], y.oaat.box$mean[ix], col = 'red', type = 'l')
+  points(X.oaat[ix,i], y.oaat.box$mean[ix], col = 'blue', type = 'l', lty = 'dashed',
+         lwd = 2)
   #abline(v = 0, col = 'grey')
   #abline(h = 0.4, col = 'grey')
   mtext(1, text = colnames(lhs)[i], line = 0.2, cex = 0.7)
 }
+plot(1:10, type = 'n', axes = FALSE)
+legend('center', legend = c('km', 'lm'), col = c('black', 'blue'),
+       lwd = 2, lty = c('solid', 'dashed'), bty = 'n')
+                                                            
 dev.off()
 
 # -------------------------------------------------------------
@@ -334,21 +339,26 @@ y.steplm.oaat = predict(steplm, newdata = X.oaat.df)
 
 # The stepwise linear model alters some of the sensitivities
 # and sets others to zero.
-pdf(file = 'oaat_lm_step.pdf', width = 8, height = 10)
-par(mfrow = c(7,11), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
+pdf(file = 'oaat_lm_step.pdf', width = 10, height = 6)
+par(mfrow = c(6, 13), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
 ylim = c(-0.12, 0.4)
 
 for(i in 1:d){
   ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
   plot(X.oaat[ix,i], y.startlm.oaat[ix],
        type = 'l',
-       ylab= '', ylim = ylim, axes = FALSE)
+       ylab= '', ylim = ylim, axes = FALSE, lwd = 2)
   
   points(X.oaat[ix,i], y.steplm.oaat[ix],
-       type = 'l', col='red')
+       type = 'l', col='red', lwd = 2)
   
   mtext(1, text = colnames(lhs)[i], line = 0.2, cex = 0.7)
 }
+plot(1:10, type = 'n', axes = FALSE)
+legend('center',legend = c('lm', 'step lm'),
+       lty = c('solid', 'solid'),
+       col = c( 'black', 'red'),
+       lwd = c(2,2), bty = 'n')
 dev.off()
 
 
@@ -386,22 +396,24 @@ d.sub = ncol(X.subs)
 
 # This confirms that the step lm and the lm given the subset give the same
 # results, and that they are both the same as the km given the subsets (it just returns a linear model)
-pdf(file = 'oaat_subs.pdf', width = 8, height = 10)
-par(mfrow = c(7,11), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
+pdf(file = 'oaat_subs.pdf', width = 10, height = 6)
+par(mfrow = c(3,8), mar = c(1,0.3,0.3,0.3), oma = c(0.5,0.5, 0.5, 0.5))
 ylim = c(-0.12, 0.4)
 
 for(i in 1:d.sub){
   ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
   
+  # linear model built on subselected columns
   ix.subs = seq(from = ((subs.ix[i]*n) - (n-1)), to =  (subs.ix[i]*n), by = 1)
   print(ix.subs)
   
   plot(X.subs.oaat[ix,i], y.subs.oaat[ix],
        type = 'l',
-       ylab= '', ylim = ylim, axes = FALSE, lwd = 2)
+       ylab= '', ylim = ylim, axes = FALSE, lwd = 3, col = 'grey')
   
+  # Flat prior Gaussian process
   points(X.subs.oaat[ix,i], y.subskm0.oaat$mean[ix],
-         type = 'l', col='darkred')
+         type = 'l', col='darkred', lwd = 2)
   
   points(X.subs.oaat[ix,i], y.subskm0.oaat$mean[ix] + y.subskm0.oaat$sd[ix],
          type = 'l', col='tomato')
@@ -409,25 +421,35 @@ for(i in 1:d.sub){
   points(X.subs.oaat[ix,i], y.subskm0.oaat$mean[ix] - y.subskm0.oaat$sd[ix],
          type = 'l', col='tomato')
   
+  # Linear prior Gaussian process
   points(X.subs.oaat[ix,i], y.subskm.oaat$mean[ix],
-         type = 'l', col='blue')
+         type = 'l', col='blue', lwd = 2, lty = 'dashed')
   
+  # Non zero components of the step linear model
   points(X.oaat[ix.subs, subs.ix[i]], y.steplm.oaat[ix.subs],
-         type = 'l', col='grey')
+         type = 'l', col='black', lwd =2, lty = 'dotted')
   
   mtext(1, text = colnames(X.subs)[i], line = 0.2, cex = 0.7)
 }
+plot(1:10, type = 'n', axes = FALSE)
+legend('center',legend = c('subselected lm', 'step lm', 'km linear prior','km flat prior'),
+       lty = c('solid', 'dotted', 'dashed', 'solid'),
+       col = c('grey', 'black', 'blue', 'darkred'),
+       lwd = c(3,2,2,2), bty = 'n')
 dev.off()
 
-# Now, include the stuff from steplm too.
+
+# Leave-one-out performance of various models
 
 lm.loo = true.loo(X = X.subs, y = y, lm = TRUE)
 y.subskm0.loo = leaveOneOut.km(subskm0,trend.reestim = TRUE, type = 'UK') 
 y.subskm.loo = leaveOneOut.km(subskm,trend.reestim = TRUE, type = 'UK') 
 
 plot(y, lm.loo$mean)
-points(y, y.subskm0.loo$mean, col = 'red')
-points(y, y.subskm.loo$mean, col = 'blue')
+
+plot(y, y.subskm0.loo$mean, col = 'red', xlim = c(-0.1, 0.5), ylim = c(-0.1, 0.5),
+     pch = 19)
+points(y, y.subskm.loo$mean, col = 'blue', pch = 19)
 abline(0,1)
 
 # It LOOKS like the flat prior is better
@@ -435,11 +457,36 @@ loo.rmse(lm.loo, y)
 loo.rmse(y.subskm0.loo, y)
 
 
+# Do we do better if we model log (y)??
+# Or sqrt(y)?
 
+# Not using the full model.
 
+sqrty = sqrt(y)
 
+# looks like this craps out
+subskm0sqrty = km(sqrty~1, design = X, response = sqrty)
 
+subskmsqrty = km(sqrty~., design = X, response = sqrty)
+test = leaveOneOut.km(subskmsqrty, type = 'UK', trend.reestim = TRUE)
 
+plot(y, (test$mean)^2)
+loo.rmse(test, y)
+
+data = data.frame(sqrt(y), X)
+
+colnames(data) <- c('sqrty', colnames(X))
+sqrty.lm = lm(sqrty~., data = data)
+
+# If we run step a second time, nothing should happen, right?
+sqrty.step = step(sqrty.lm, direction="both", k=log(nval), trace=TRUE)
+
+test = twoStep(X, sqrty)
+twostep.fit = test$emulator
+twostep.lm = test$steplm
+
+loo.ts = leaveOneOut.km(twostep.fit, type = 'UK', trend.reestim = FALSE)
+sqrt(mean(loo.ts$mean - y)^2)
 
 
 
