@@ -295,6 +295,50 @@ axis(2, las = 1)
 dev.off()
 
 
+# Group the parameters together.
+# Group by leading text?
+
+source('../jules_params_awiltshire.R')
+tlnames = names(paramlist)
+params = length(tlnames)
+
+tlnames.ix <- list(length = params)
+
+for(i in 1:params){
+  tlnames.ix[[i]] = grep(tlnames[i], cn)
+}
+
+paramsens.global = rep(NA, params)
+paramsens.wus = rep(NA, params)
+paramsens.sam = rep(NA, params)
+
+for(i in 1:length(tlnames)){
+  paramsens.global[i] = sum(global.sens.summary[tlnames.ix[[i]]])
+  paramsens.wus[i] = sum(wus.sens.summary[tlnames.ix[[i]]])
+  paramsens.sam[i] = sum(sam.sens.summary[tlnames.ix[[i]]])
+}
+
+pdf(width = 5, height = 8)
+par(mfrow = c(3,1))
+dotchart(paramsens.global,labels = tlnames)
+dotchart(paramsens.wus,labels = tlnames)
+dotchart(paramsens.sam,labels = tlnames)
+dev.off()
+
+pdf(file = 'sensitivity_summary.pdf', width = 7, height = 5)
+par(mar = c(8,4,2,1), las = 1)
+plot(1:params, paramsens.global, ylim = c(0,4), pty = 'n', xlim = c(0, params+1),
+     axes = FALSE, xlab = '', ylab = 'sensitivity index')
+axis(1, at = 1:params, labels = tlnames, las = 3)
+axis(2)
+abline(v = 1:params, col = 'grey', lty = 'dashed')
+points(1:params, paramsens.global, ylim = c(0,5), pch = 21)
+points(1:params, paramsens.wus, col = 'blue', pch = 21)
+points(1:params, paramsens.sam, col = 'red', pch = 21)
+legend('topright', legend = c('global', 'WUS', 'SAM'), col = c('black', 'blue', 'red'), pch = 21, bg = 'white')
+dev.off()
+
+
 
 
 

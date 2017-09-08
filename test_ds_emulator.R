@@ -68,7 +68,7 @@ loo.rmse = function(loo,y){
 
 
 #read data
-# Tropical Broadleaf Evergreen data
+# Tropical Broadleaf Evergreen data (Amazon)
 frac = read.table('forest_frac.txt', header = FALSE)
 lhs = read.table('lhs_u-ak745.txt', header = TRUE)
 
