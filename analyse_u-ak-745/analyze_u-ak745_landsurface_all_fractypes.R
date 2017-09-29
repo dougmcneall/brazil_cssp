@@ -308,9 +308,18 @@ for(i in 1:params){
   tlnames.ix[[i]] = grep(tlnames[i], cn)
 }
 
+# Realised that by using the absolute value and splitting into 
+# per-parameter metrics, we're over-weighting some of the parameters.
+
+
 paramsens.global = rep(NA, params)
 paramsens.wus = rep(NA, params)
 paramsens.sam = rep(NA, params)
+
+# Realised that by using the absolute value and splitting into 
+# per-parameter metrics, we're over-weighting some of the parameters.
+# Dividing by the number of parameters is an imperfect way to fix that
+divfactors = sapply(tlnames.ix, length)
 
 for(i in 1:length(tlnames)){
   paramsens.global[i] = sum(global.sens.summary[tlnames.ix[[i]]])
@@ -318,23 +327,20 @@ for(i in 1:length(tlnames)){
   paramsens.sam[i] = sum(sam.sens.summary[tlnames.ix[[i]]])
 }
 
-pdf(width = 5, height = 8)
-par(mfrow = c(3,1))
-dotchart(paramsens.global,labels = tlnames)
-dotchart(paramsens.wus,labels = tlnames)
-dotchart(paramsens.sam,labels = tlnames)
-dev.off()
+paramsens.global.norm = paramsens.global/divfactors
+paramsens.wus.norm = paramsens.wus/divfactors
+paramsens.sam.norm = paramsens.sam/divfactors
 
 pdf(file = 'sensitivity_summary.pdf', width = 7, height = 5)
 par(mar = c(8,4,2,1), las = 1)
-plot(1:params, paramsens.global, ylim = c(0,4), pty = 'n', xlim = c(0, params+1),
+plot(1:params, paramsens.global.norm, ylim = c(0,1), pty = 'n', xlim = c(0, params+1),
      axes = FALSE, xlab = '', ylab = 'sensitivity index')
 axis(1, at = 1:params, labels = tlnames, las = 3)
 axis(2)
 abline(v = 1:params, col = 'grey', lty = 'dashed')
-points(1:params, paramsens.global, ylim = c(0,5), pch = 21)
-points(1:params, paramsens.wus, col = 'blue', pch = 21)
-points(1:params, paramsens.sam, col = 'red', pch = 21)
+points(1:params, paramsens.global.norm, ylim = c(0,5), pch = 21)
+points(1:params, paramsens.wus.norm, col = 'blue', pch = 21)
+points(1:params, paramsens.sam.norm, col = 'red', pch = 21)
 legend('topright', legend = c('global', 'WUS', 'SAM'), col = c('black', 'blue', 'red'), pch = 21, bg = 'white')
 dev.off()
 

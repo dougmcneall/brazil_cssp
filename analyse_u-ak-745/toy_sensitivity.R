@@ -11,7 +11,6 @@
   
 Se = 3
 
-
 mu_b_p = -1
 mu_b_h = -0.5
 mu_b_g = 1
@@ -20,11 +19,9 @@ epsilon_p = 0.1
 epsilon_h = 0.5
 epsilon_g = 1
 
+bp = rnorm(mu_b_p, epsilon_p)
+bh = rnorm(mu_b_h,epsilon_h)
+bg = rnorm(mu_b_g,epsilon_g)
 
-
-bp = rnorm(-1, 1)
-bh = rnorm(-0.5)
-
-Sh = 
-
+dat = 
 
