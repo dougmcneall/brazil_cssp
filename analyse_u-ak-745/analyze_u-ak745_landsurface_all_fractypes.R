@@ -331,17 +331,28 @@ paramsens.global.norm = paramsens.global/divfactors
 paramsens.wus.norm = paramsens.wus/divfactors
 paramsens.sam.norm = paramsens.sam/divfactors
 
+
+# Do we make a different decision if we take the meanof the response, rather
+# than the sum? (answer:no)
+
+for(i in 1:length(tlnames)){
+  paramsens.global.norm[i] = mean(global.sens.summary[tlnames.ix[[i]]])
+  paramsens.wus.norm[i] = mean(wus.sens.summary[tlnames.ix[[i]]])
+  paramsens.sam.norm[i] = mean(sam.sens.summary[tlnames.ix[[i]]])
+}
+
+
 pdf(file = 'sensitivity_summary.pdf', width = 7, height = 5)
 par(mar = c(8,4,2,1), las = 1)
-plot(1:params, paramsens.global.norm, ylim = c(0,1), pty = 'n', xlim = c(0, params+1),
+plot(1:params, paramsens.global.norm, ylim = c(0,0.3), pty = 'n', xlim = c(0, params+1),
      axes = FALSE, xlab = '', ylab = 'sensitivity index')
 axis(1, at = 1:params, labels = tlnames, las = 3)
 axis(2)
 abline(v = 1:params, col = 'grey', lty = 'dashed')
-points(1:params, paramsens.global.norm, ylim = c(0,5), pch = 21)
-points(1:params, paramsens.wus.norm, col = 'blue', pch = 21)
-points(1:params, paramsens.sam.norm, col = 'red', pch = 21)
-legend('topright', legend = c('global', 'WUS', 'SAM'), col = c('black', 'blue', 'red'), pch = 21, bg = 'white')
+points(1:params, paramsens.global.norm, ylim = c(0,5), pch = 19)
+points(1:params, paramsens.wus.norm, col = 'blue', pch = 19)
+points(1:params, paramsens.sam.norm, col = 'red', pch = 19)
+legend('topright', legend = c('global', 'WUS', 'SAM'), col = c('black', 'blue', 'red'), pch = 19, bg = 'white')
 dev.off()
 
 
