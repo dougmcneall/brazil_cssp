@@ -89,9 +89,9 @@ fn.step = function(newdata){
   -out
 }
 
-#startin.mat <- matrix(rep(0.5, 74), nrow = 1)
-#startin <- data.frame(startin.mat)
-#colnames(startin) <- colnames(lhs)
+startin.mat <- matrix(rep(0.5, 74), nrow = 1)
+startin <- data.frame(startin.mat)
+colnames(startin) <- colnames(lhs)
 
 testpred <- fn.step(rep(0.5, 74))
 
@@ -111,5 +111,13 @@ test2 <- optim(par = startin,
               fn = fn.step,
               control = list(maxit = 2000)
               )
+
+nd = data.frame(matrix(test$par, nrow = 1))
+colnames(nd) = colnames(lhs)
+predict(stepfit, newdata = nd)
+hist(y)
+
+
+
 
 

@@ -78,7 +78,7 @@ dev.off()
 
 pdf(file = 'response_summary_step_wus_lai_both_measures.pdf', width = 12, height = 8)
 par(mar = c(4,7,2,7), mfrow = c(2,1), oma = c(3,0,0,0))
-image(wus.sensmat.co, col = br, axes = FALSE, main = 'WUS')
+image(wus.sensmat.lai.co, col = br, axes = FALSE, main = 'WUS')
 axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
 axis(2, at = seq(from =0, to = 1, by = 1/12) , labels = pfts, las = 1)
 
@@ -93,14 +93,14 @@ dev.off()
 
 pdf(file = 'response_summary_step_sam_lai_both_measures.pdf', width = 12, height = 8)
 par(mar = c(4,7,2,7), mfrow = c(2,1), oma = c(3,0,0,0))
-image(sam.sensmat.co, col = br, axes = FALSE, main = 'SAM')
+image(sam.sensmat.lai.co, col = br, axes = FALSE, main = 'SAM')
 axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
 axis(2, at = seq(from =0, to = 1, by = 1/12) , labels = pfts, las = 1)
 
 image.plot(sam.sensmat.lai.co, col = br, legend.only = TRUE)
 
 plot(sam.sens.lai.summary[sam.sens.lai.ix], axes = FALSE, 
-     xlab = '', ylab = 'Sensitivity summary', ylim = c(0,1.5))
+     xlab = '', ylab = 'Sensitivity summary', ylim = c(0,3))
 axis(1, labels=(colnames(lhs))[sam.sens.lai.ix], at = 1:length(sam.sens.lai.summary), las = 3, cex.axis = 0.8 )
 axis(2, las = 1)
 
