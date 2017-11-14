@@ -129,4 +129,100 @@ best.mat = rbind(best.nle.wus$best.X$par, best.blet.sam$best.X$par,
 
 parcoord(best.mat)
 
+pdf(file = 'corners_NLE.pdf', width = 2.5, height = 7)
+par(mar = c(2,5,3,1),las = 1)
+plot(best.nle.wus$best.X$par,1:length(best.nle.wus$best.X$par),
+     axes = FALSE, xlab = '', ylab = '',
+     pty = 'n')
+abline(h = 1:74, lty = 'dashed', col = 'grey')
+
+points(best.nle.wus$best.X$par,1:length(best.nle.wus$best.X$par),
+     pch = 20,
+     col = 'black')
+
+points(best.nle.glob$best.X$par,1:length(best.nle.glob$best.X$par),
+       pch  = 20,
+       col = 'red')
+
+axis(2, at = 1:74, labels = colnames(lhs), cex.axis = 0.4)
+par(xpd = TRUE)
+legend(x = 0, y = 80, 
+       legend = c('NLE WUS', 'NLE Global'), 
+       pch = 19, col = c('black','red'),
+       pt.cex = c(1,0.8),
+       ncol = 2,
+       cex = 0.5,
+       bty = 'n'
+)
+
+dev.off()
+
+pdf(file = 'corners_BLET.pdf', width = 2.5, height = 7)
+par(mar = c(2,5,3,1),las = 1)
+plot(best.blet.sam$best.X$par,1:length(best.blet.sam$best.X$par),
+     axes = FALSE, xlab = '', ylab = '',
+     pty = 'n')
+abline(h = 1:74, lty = 'dashed', col = 'grey')
+
+points(best.blet.sam$best.X$par,1:length(best.blet.sam$best.X$par),
+       pch = 19, col = 'darkgrey'
+       )
+
+points(best.blet.glob$best.X$par,1:length(best.blet.glob$best.X$par),
+       pch  = 19,
+       cex = 0.8,
+       col = 'dodgerblue')
+
+axis(2, at = 1:74, labels = colnames(lhs), cex.axis = 0.4)
+par(xpd = TRUE)
+legend(x = 0, y = 80, 
+       legend = c('BLET SAM', 'BLET Global'), 
+       pch = 19, col = c('darkgrey','dodgerblue'),
+       pt.cex = c(1,0.8),
+       ncol = 2,
+       cex = 0.5,
+       bty = 'n'
+)
+dev.off()
+
+
+pdf(file = 'corners.pdf', width = 2.5, height = 7)
+par(mar = c(2,5,3,1),las = 1)
+plot(best.nle.wus$best.X$par,1:length(best.nle.wus$best.X$par),
+     axes = FALSE, xlab = '', ylab = '',
+     pty = 'n',
+     pch = 19)
+
+abline(h = 1:74, lty = 'dashed', col = 'grey')
+
+points(best.nle.wus$best.X$par,1:length(best.nle.wus$best.X$par),
+       pch = 19)
+
+points(best.blet.sam$best.X$par,1:length(best.blet.sam$best.X$par),
+       pch  = 19, cex = 0.8,
+       col = 'darkgrey')
+
+axis(2, at = 1:74, labels = colnames(lhs), cex.axis = 0.4)
+
+points(best.nle.glob$best.X$par,1:length(best.nle.glob$best.X$par),
+       col = 'red', pch = 19, cex = 0.6
+)
+
+points(best.blet.glob$best.X$par,1:length(best.blet.glob$best.X$par),
+       col = 'dodgerblue',
+       pch = 19, cex = 0.4)
+
+par(xpd = TRUE)
+legend(x = 0, y = 80, 
+       legend = c('NLE WUS', 'BLET SAM', 'NLE Global', 'BLET Global'), 
+       pch = 19, col = c('black','darkgrey', 'red', 'dodgerblue'),
+       pt.cex = c(1,0.8,0.6,0.4),
+       ncol = 2,
+       cex = 0.5,
+       bty = 'n'
+       )
+dev.off()
+
+
+
 
