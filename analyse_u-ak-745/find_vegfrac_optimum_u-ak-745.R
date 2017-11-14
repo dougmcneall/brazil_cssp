@@ -13,6 +13,7 @@ library(RColorBrewer)
 library(fields)
 library(MASS)
 library(DiceKriging)
+library(coefplot)
 
 source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtools.R")
 source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/imptools.R")
@@ -72,8 +73,11 @@ fn.step = function(newdata, cn, stepfit){
 # best.X$par[best.X$par!=0.5]
 
 
-best.corner = function(X.norm, dat, fn){
+best.corner = function(X.norm, y, fn){
   # Find the ["best"] corner of the data that minimises output
+  
+   dat = data.frame(y=y, x=X.norm)
+  colnames(dat) = c('y', colnames(X.norm))
   
   initfit = lm(y ~ ., data = dat)
   stepfit = step(initfit, direction="both", k=log(length(y)), trace=TRUE)
@@ -96,38 +100,15 @@ best.corner = function(X.norm, dat, fn){
   colnames(nd) = colnames(X.norm)
   best.y = predict(stepfit, newdata = nd)
   
-  return(list(best.X = best.X, best.y = best.y, stepfit))
+  return(list(best.X = best.X, best.y = best.y, stepfit = stepfit, y=y))
   
 }
 
-y = c(nle_wus_mae, recursive = TRUE)
-dat = data.frame(y=y, x=X.norm)
-colnames(dat) = c('y', colnames(lhs))
-best.nle.wus = best.corner(X.norm = X.norm, dat = dat, fn = fn.step)
+best.nle.wus = best.corner(X.norm = X.norm, y = nle_wus_mae, fn = fn.step)
+best.nle.glob = best.corner(X.norm = X.norm, y = nle_glob_mae, fn = fn.step)
+best.blet.sam = best.corner(X.norm = X.norm, y = blet_sam_mae, fn = fn.step)
+best.blet.glob = best.corner(X.norm = X.norm, y = blet_glob_mae, fn = fn.step)
 
-y = c(blet_sam_mae, recursive = TRUE)
-dat = data.frame(y=y, x=X.norm)
-colnames(dat) = c('y', colnames(lhs))
-
-best.blet.sam = best.corner(X.norm = X.norm, dat = dat, fn = fn.step)
-
-
-y = c(nle_glob_mae, recursive = TRUE)
-dat = data.frame(y=y, x=X.norm)
-colnames(dat) = c('y', colnames(lhs))
-best.nle.glob = best.corner(X.norm = X.norm, dat = dat, fn = fn.step)
-
-y = c(blet_glob_mae, recursive = TRUE)
-dat = data.frame(y=y, x=X.norm)
-colnames(dat) = c('y', colnames(lhs))
-
-best.blet.glob = best.corner(X.norm = X.norm, dat = dat, fn = fn.step)
-
-
-best.mat = rbind(best.nle.wus$best.X$par, best.blet.sam$best.X$par,
-                 best.nle.glob$best.X$par, best.blet.glob$best.X$par)
-
-parcoord(best.mat)
 
 pdf(file = 'corners_NLE.pdf', width = 2.5, height = 7)
 par(mar = c(2,5,3,1),las = 1)
@@ -222,6 +203,65 @@ legend(x = 0, y = 80,
        bty = 'n'
        )
 dev.off()
+
+
+# with the South American Broadleaf Evergreen Tropical, we actually get a very small
+# model back from the stepwise regression
+
+# Fit stepwise models as a sensitivity analysis
+
+dat = data.frame(y=c(blet_sam_mae, recursive = TRUE), x=X.norm)
+colnames(dat) = c('y', colnames(lhs))
+initfit = lm(y ~ ., data = dat)
+stepfit = step(initfit, direction="both", k=log(length(y)), trace=TRUE)
+
+
+
+# However, it looks like we can't get close to "zero" error
+hist(best.blet.sam$y, xlim = c(0, max(best.blet.sam$y)), main = 'SAM BLE')
+rug(best.blet.sam$best.y, lwd = 3, col = 'red')
+
+coefplot(best.blet.sam$stepfit)
+
+# with global Broadleaf Evergreen Tropical, we get a larger model back
+y = blet_glob_mae
+dat = data.frame(y=y, x=X.norm)
+colnames(dat) = c('y', colnames(lhs))
+
+initfit = lm(y ~ ., data = dat)
+stepfit = step(initfit, direction="both", k=log(length(y)), trace=TRUE)
+# Much larger model for the global fit
+coefplot(best.blet.glob$stepfit)
+# As in the regional, we can roughly half the MAE
+hist(y, xlim = c(0, max(y)))
+rug(best.blet.glob$best.y, lwd = 3, col = 'red')
+
+
+# Regional NLE
+y = c(nle_wus_mae, recursive = TRUE)
+dat = data.frame(y=y, x=X.norm)
+colnames(dat) = c('y', colnames(lhs))
+
+initfit = lm(y ~ ., data = dat)
+stepfit = step(initfit, direction="both", k=log(length(y)), trace=TRUE)
+
+coefplot(stepfit)
+# As in the regional, we can roughly half the MAE
+hist(y, xlim = c(0, max(y)))
+rug(best.nle.wus$best.y, lwd = 3, col = 'red')
+
+# Global NLE
+y = c(nle_glob_mae, recursive = TRUE)
+dat = data.frame(y=y, x=X.norm)
+colnames(dat) = c('y', colnames(lhs))
+
+initfit = lm(y ~ ., data = dat)
+stepfit = step(initfit, direction="both", k=log(length(y)), trace=TRUE)
+
+coefplot(stepfit)
+# As in the regional, we can roughly half the MAE
+hist(y, xlim = c(0, max(y)))
+rug(best.nle.glob$best.y, lwd = 3, col = 'red')
 
 
 
