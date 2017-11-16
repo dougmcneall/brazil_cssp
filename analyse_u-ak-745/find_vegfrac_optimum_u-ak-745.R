@@ -205,63 +205,90 @@ legend(x = 0, y = 80,
 dev.off()
 
 
-# with the South American Broadleaf Evergreen Tropical, we actually get a very small
-# model back from the stepwise regression
 
-# Fit stepwise models as a sensitivity analysis
+coefplot.doug = function(fit, ...){
+  # Plot coefficients and uncertainty from a linear model.
+  y = coef(fit)
+  segs = confint(fit)
+  
+  plot(y, 1:length(y), pty = 'n', axes = FALSE, xlab = '', ylab = '',
+      xlim = range(segs) )
+  abline(v=0, col = 'grey')
+  points(y, 1:length(y), ...)
+  segments(x0 = segs[,1], y0 = 1:length(y), x1 = segs[,2], y1 = 1:length(y))
+  axis(1)
+  axis(2, labels = names(y), at = 1:length(y), las = 1, ...)
+}
 
-dat = data.frame(y=c(blet_sam_mae, recursive = TRUE), x=X.norm)
-colnames(dat) = c('y', colnames(lhs))
-initfit = lm(y ~ ., data = dat)
-stepfit = step(initfit, direction="both", k=log(length(y)), trace=TRUE)
 
+pdf(file = 'blet_optimum_output.pdf', width = 7, height = 7)
+par(fg = 'white', mfrow = c(2,2))
+hist(best.blet.sam$y, xlim = c(0, max(best.blet.sam$y)),
+     main = 'Regional Broadleaf Tropical Evergreen',
+     xlab = 'Mean abs. fraction error',
+     col = 'grey',
+     axes = FALSE)
+par(fg = 'black')
+axis(1)
+axis(2)
 
-
-# However, it looks like we can't get close to "zero" error
-hist(best.blet.sam$y, xlim = c(0, max(best.blet.sam$y)), main = 'SAM BLE')
 rug(best.blet.sam$best.y, lwd = 3, col = 'red')
+legend('topleft', pch = '|', pt.lwd = 5, col = 'red', legend = 'optimum', bty = 'n')
+par(mar = c(5.1, 6.1, 4.1, 2.1))
+coefplot.doug(best.blet.sam$stepfit, pch = 19, cex.axis = 0.8)
 
-coefplot(best.blet.sam$stepfit)
+par(fg = 'white',mar = c(5.1, 4.1, 4.1, 2.1))
+hist(best.blet.glob$y, xlim = c(0, max(best.blet.glob$y)),
+     xlab = 'Mean abs. fraction error',
+     col = 'grey',
+     main = 'Global Broadleaf Tropical Evergreen',
+     axes = FALSE)
+par(fg = 'black')
+axis(1)
+axis(2)
 
-# with global Broadleaf Evergreen Tropical, we get a larger model back
-y = blet_glob_mae
-dat = data.frame(y=y, x=X.norm)
-colnames(dat) = c('y', colnames(lhs))
-
-initfit = lm(y ~ ., data = dat)
-stepfit = step(initfit, direction="both", k=log(length(y)), trace=TRUE)
-# Much larger model for the global fit
-coefplot(best.blet.glob$stepfit)
-# As in the regional, we can roughly half the MAE
-hist(y, xlim = c(0, max(y)))
 rug(best.blet.glob$best.y, lwd = 3, col = 'red')
+par(mar = c(5.1, 6.1, 4.1, 2.1))
+coefplot.doug(best.blet.glob$stepfit, pch = 19, cex.axis = 0.8)
+dev.off()
 
 
-# Regional NLE
-y = c(nle_wus_mae, recursive = TRUE)
-dat = data.frame(y=y, x=X.norm)
-colnames(dat) = c('y', colnames(lhs))
 
-initfit = lm(y ~ ., data = dat)
-stepfit = step(initfit, direction="both", k=log(length(y)), trace=TRUE)
+# NLE
+pdf(file = 'nle_optimum_output.pdf', width = 7, height = 7)
+par(fg = 'white', mfrow = c(2,2))
+hist(best.nle.wus$y, xlim = c(0, max(best.nle.wus$y)),
+     main = 'Regional Needleleaf Evergreen',
+     xlab = 'Mean abs. fraction error',
+     col = 'grey',
+     axes = FALSE)
+par(fg = 'black')
+axis(1)
+axis(2)
 
-coefplot(stepfit)
-# As in the regional, we can roughly half the MAE
-hist(y, xlim = c(0, max(y)))
 rug(best.nle.wus$best.y, lwd = 3, col = 'red')
+legend('topleft', pch = '|', pt.lwd = 5, col = 'red', legend = 'optimum', bty = 'n')
+par(mar = c(5.1, 6.1, 4.1, 2.1))
+coefplot.doug(best.nle.wus$stepfit, pch = 19, cex.axis = 0.8)
 
-# Global NLE
-y = c(nle_glob_mae, recursive = TRUE)
-dat = data.frame(y=y, x=X.norm)
-colnames(dat) = c('y', colnames(lhs))
+par(fg = 'white',mar = c(5.1, 4.1, 4.1, 2.1))
+hist(best.nle.glob$y, xlim = c(-0.02, max(best.nle.glob$y)),
+     xlab = 'Mean abs. fraction error',
+     col = 'grey',
+     main = 'Global Needleleaf Evergreen',
+     axes = FALSE)
+abline(v = 0, col = 'grey')
+par(fg = 'black')
+axis(1)
+axis(2)
 
-initfit = lm(y ~ ., data = dat)
-stepfit = step(initfit, direction="both", k=log(length(y)), trace=TRUE)
-
-coefplot(stepfit)
-# As in the regional, we can roughly half the MAE
-hist(y, xlim = c(0, max(y)))
 rug(best.nle.glob$best.y, lwd = 3, col = 'red')
+par(mar = c(5.1, 6.1, 4.1, 2.1))
+coefplot.doug(best.nle.glob$stepfit, pch = 19, cex.axis = 0.8)
+dev.off()
+
+
+
 
 
 
