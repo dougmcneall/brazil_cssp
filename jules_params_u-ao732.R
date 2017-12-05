@@ -3,8 +3,8 @@
 # 0.5 and 2 times
 b_wl_io = list(
   'standard' = rep(1.667, 13),
-  'min' = rep((2*1.667), 13),
-  'max' = rep((0.5*1.667), 13),
+  'min' = rep((0.6*1.667), 13), # make sure b_wl > 1
+  'max' = rep((2*1.667), 13),
   'namelist' = 'jules_pftparm'
 )
 
@@ -26,25 +26,25 @@ lai_max_io = list(
 
 # 1/3 and 3 times
 lai_min_io = list(
-  'standard' = rep(1,13),
-  'min' = 0.33 * rep(1,13),
-  'max' = 3 * rep(1,13),
+  'standard' = c(1,1,1,1,1,0.6,0.6,0.6,0.6,0.6,0.6,1,1),
+  'min' = 0.33 * c(1,1,1,1,1,0.6,0.6,0.6,0.6,0.6,0.6,1,1),
+  'max' = 3 * c(1,1,1,1,1,0.6,0.6,0.6,0.6,0.6,0.6,1,1),
   'namelist' = 'jules_triffid'
 )
 
 # fix the zeros to -1,1 so that we get some variation in range
 tlow_io = list(
   'standard' = c(10,13,13,-10,0,10,10,10,13,13,13,10,0),
-  'min' = 0.8 * c(10,13,13,-10,-1,10,10,10,13,13,13,10,-1),
-  'max' = 1.2 * c(10,13,13,-10,1,10,10,10,13,13,13,10,1),
+  'min' = 0.9 * c(10,13,13,-10,-1,10,10,10,13,13,13,10,-1),
+  'max' = 1.1 * c(10,13,13,-10,1,10,10,10,13,13,13,10,1),
   'namelist' = 'jules_pftparm'
 )
 
 # 0.5 and 2 times
 g_area_io = list(
-  'standard' = c(0.006,0.007,0.008,0.01,0.02,0.125,0.125,0.125,0.06,0.06,0.06,0.06,0.06),
-  'min' = 0.5 * c(0.006,0.007,0.008,0.01,0.02,0.125,0.125,0.125,0.06,0.06,0.06,0.06,0.06),
-  'max' = 2 * c(0.006,0.007,0.008,0.01,0.02,0.125,0.125,0.125,0.06,0.06,0.06,0.06,0.06),
+  'standard' = c(0.011,0.007,0.014,0.01,0.025,0.125,0.125,0.125,0.06,0.06,0.06,0.06,0.1),
+  'min' = 0.5 * c(0.011,0.007,0.014,0.01,0.025,0.125,0.125,0.125,0.06,0.06,0.06,0.06,0.1),
+  'max' = 2 * c(0.011,0.007,0.014,0.01,0.025,0.125,0.125,0.125,0.06,0.06,0.06,0.06,0.1),
   'namelist' = 'jules_triffid'
 )
 
@@ -79,9 +79,9 @@ lma_io = list(
  )
 
 nr_io = list(
-  'standard' = c(0.01726, 0.01726, 0.01726, 0.00784, 0.00784, 0.0162, 0.0162, 0.0162, 0.0084, 0.0084, 0.01726, 0.0172) , 
-  'min' = 0.5 * c(0.01726, 0.01726, 0.01726, 0.00784, 0.00784, 0.0162, 0.0162, 0.0162, 0.0084, 0.0084, 0.01726, 0.0172), 
-  'max' = 2 * c(0.01726, 0.01726, 0.01726, 0.00784, 0.00784, 0.0162, 0.0162, 0.0162, 0.0084, 0.0084, 0.01726, 0.0172),
+  'standard' = c(0.01726, 0.01726, 0.01726, 0.00784, 0.00784, 0.0162, 0.0162, 0.0162, 0.0084, 0.0084, 0.0084, 0.01726, 0.0172) , 
+  'min' = 0.5 * c(0.01726, 0.01726, 0.01726, 0.00784, 0.00784, 0.0162, 0.0162, 0.0162, 0.0084, 0.0084, 0.0084, 0.01726, 0.0172), 
+  'max' = 2 * c(0.01726, 0.01726, 0.01726, 0.00784, 0.00784, 0.0162, 0.0162, 0.0162, 0.0084, 0.0084, 0.0084, 0.01726, 0.0172),
   'namelist' = 'jules_pftparm'
  )
 
@@ -92,10 +92,10 @@ nr_io = list(
 #  'namelist' = ,
 # )
 
-t_leaf_of_io = list(
+tleaf_of_io = list(
   'standard' = c(280, 278.15, 233.15, 278.15,233.15, 278.15, 278.15, 278.15, 278.15, 278.15, 278.15, 280, 233.15) , 
-  'min' = 0.5 * c(280, 278.15, 233.15, 278.15,233.15, 278.15, 278.15, 278.15, 278.15, 278.15, 278.15, 280, 233.15), 
-  'max' = 2 * c(280, 278.15, 233.15, 278.15,233.15, 278.15, 278.15, 278.15, 278.15, 278.15, 278.15, 280, 233.15),
+  'min' = 0.9 * c(280, 278.15, 233.15, 278.15,233.15, 278.15, 278.15, 278.15, 278.15, 278.15, 278.15, 280, 233.15), 
+  'max' = 1.1 * c(280, 278.15, 233.15, 278.15,233.15, 278.15, 278.15, 278.15, 278.15, 278.15, 278.15, 280, 233.15),
   'namelist' = 'jules_pftparm'
 )
 
@@ -107,9 +107,9 @@ dcatch_dlai_io = list(
 )
 
 alpha_io = list(
-  'standard' = c(0.08, 0.08, 0.06, 0.1, 0.08, 0.06, 0.06, 0.06, 0.04, 0.04, 0.04, 0.08, 0.08, 0.06) , 
-  'min' = 0.5 * c(0.08, 0.08, 0.06, 0.1, 0.08, 0.06, 0.06, 0.06, 0.04, 0.04, 0.04, 0.08, 0.08, 0.06), 
-  'max' = 2 * c(0.08, 0.08, 0.06, 0.1, 0.08, 0.06, 0.06, 0.06, 0.04, 0.04, 0.04, 0.08, 0.08, 0.06),
+  'standard' = c(0.064, 0.064, 0.048, 0.08, 0.064, 0.048, 0.048, 0.048, 0.04, 0.04, 0.04, 0.064, 0.048), 
+  'min' = 0.5 * c(0.064, 0.064, 0.048, 0.08, 0.064, 0.048, 0.048, 0.048, 0.04, 0.04, 0.04, 0.064, 0.048), 
+  'max' = 2 * c(0.064, 0.064, 0.048, 0.08, 0.064, 0.048, 0.048, 0.048, 0.04, 0.04, 0.04, 0.064, 0.048),
   'namelist' = 'jules_pftparm'
 )
 
@@ -168,11 +168,18 @@ knl_io = list(
 )
 
 a_wl_io = list(
-  'standard' = c(0.78, 0.845, 0.78, 0.8, 0.65, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.2, 0.13),
-  'min' = 0.5 * c(0.78, 0.845, 0.78, 0.8, 0.65, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.2, 0.13),
-  'max' = 2* c(0.78, 0.845, 0.78, 0.8, 0.65, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.2, 0.13),
+  'standard' = c(0.78, 0.845, 0.78, 0.8, 0.65, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.13, 0.13),
+  'min' = 0.5 * c(0.78, 0.845, 0.78, 0.8, 0.65, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.13, 0.13),
+  'max' = 2* c(0.78, 0.845, 0.78, 0.8, 0.65, 0.005, 0.005, 0.005, 0.005, 0.005, 0.005, 0.13, 0.13),
   'namelist' = 'jules_pftparm'
 )
+
+fd_io = list(
+  'standard' = c(0.01, 0.01, 0.01, 0.015, 0.015, 0.019, 0.019, 0.019, 0.019, 0.019, 0.019, 0.015, 0.015), 
+  'min' = 0.5 * c(0.01, 0.01, 0.01, 0.015, 0.015, 0.019, 0.019, 0.019, 0.019, 0.019, 0.019, 0.015, 0.015), 
+  'max' = 2 * c(0.01, 0.01, 0.01, 0.015, 0.015, 0.019, 0.019, 0.019, 0.019, 0.019, 0.019, 0.015, 0.015),
+  'namelist' = 'jules_pftparm'
+  )
 
 g_root_io = list(
   'standard' = c(0.15, 0.25, 0.25, 0.15, 0.15, 0.25, 0.25, 0.25, 0.25, 0.25, 0.25, 0.15, 0.15),
@@ -203,9 +210,9 @@ retran_r_io = list(
 )
 
 kaps_roth = list(
-  'standard' = c(1.61E-07, 4.83E-09, 1.06E-08, 3.22E-10),
-  'min' = 0.5 * c(1.61E-07, 4.83E-09, 1.06E-08, 3.22E-10),
-  'max' = 2 * c(1.61E-07, 4.83E-09, 1.06E-08, 3.22E-10),
+  'standard' = c(2.15E-07, 6.43E-09, 1.41E-08, 4.29E-10),
+  'min' = 0.5 * c(2.15E-07, 6.43E-09, 1.41E-08, 4.29E-10),
+  'max' = 2 * c(2.15E-07, 6.43E-09, 1.41E-08, 4.29E-10),
   'namelist' = 'jules_soil_biogeochem'
 )
 
@@ -231,41 +238,66 @@ bio_hum_cn = list(
 )
 
 l_vg_soil = list(
-  'standard' = '.true.',
+  'standard' = '.false.',
   'min' = '.false.',
   'max' = '.true.',
   'namelist' = 'jules_soil'
 )
 
+gs_nvg_io = list(
+  'standard' = c(0.00000, 0.00000, 1.00000e-2, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6),
+  'min' = 0.5 * c(0.00000, 0.00000, 1.00000e-2, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6),
+  'max' = 2* c(0.00000, 0.00000, 1.00000e-2, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6, 1.00000e+6),
+  'namelist' = 'jules_nvegparm'
+  )
+
+
 paramlist = list(
-  'b_wl_io' = b_wl_io, 
-  'sigl_io' = sigl_io,
-  'lai_max_io' = lai_max_io, 
-  'lai_min_io' = lai_min_io,
-  'tlow_io' = tlow_io,
-  'g_area_io' = g_area_io,
-  'dqcrit_io' = dqcrit_io,
-  'r_grow_io' = r_grow_io,
-  'nmass_io' = nmass_io,
-  'lma_io' = lma_io,
-  'nr_io' = nr_io,
-  't_leaf_of_io' = t_leaf_of_io,
+  'alpha_io' = alpha_io, # FMEC excluded, low sensitivity
+  'a_wl_io' = a_wl_io,
+  'bio_hum_cn' = bio_hum_cn,
+  'b_wl_io' = b_wl_io,
   'dcatch_dlai_io' = dcatch_dlai_io,
-  'alpha_io' = alpha_io,
+  'dqcrit_io' = dqcrit_io,
   'dz0v_dh_io' = dz0v_dh_io,
   'f0_io' = f0_io,
-  'rootd_ft_io' = rootd_ft_io,
-  'tupp_io' = tupp_io,
-  'g_root_io' = g_root_io,
+  'fd_io' = fd_io,
+  'g_area_io' = g_area_io,
+  'g_root_io' = g_root_io, # FMEC excluded, constrained in literature
   'g_wood_io' = g_wood_io,
+  'gs_nvg_io' = gs_nvg_io,
+  'hw_sw_io' = hw_sw_io, 
+  'kaps_roth' = kaps_roth,
+  'knl_io' = knl_io, 
+  'lai_max_io' = lai_max_io, 
+  'lai_min_io' = lai_min_io,
+  'lma_io' = lma_io,
+  'l_vg_soil' = l_vg_soil,
+  'n_inorg_turnover' = n_inorg_turnover,
+  'nmass_io' = nmass_io,
+  'nr_io' = nr_io,
   'retran_l_io' = retran_l_io,
   'retran_r_io' = retran_r_io,
-  'hw_sw_io' = hw_sw_io, 
-  'knl_io' = knl_io, 
-  'a_wl_io' = a_wl_io,
-  'kaps_roth' = kaps_roth,
-  'n_inorg_turnover' = n_inorg_turnover,
-  'bio_hum_cn' = bio_hum_cn,
+  'r_grow_io' = r_grow_io,
+  'rootd_ft_io' = rootd_ft_io,
+  'sigl_io' = sigl_io, 
   'sorp' = sorp,
-  'l_vg_soil' = l_vg_soil
+  'tleaf_of_io' = tleaf_of_io,
+  'tlow_io' = tlow_io,
+  'tupp_io' = tupp_io
  )
+
+#a_ws_io? #FMEC excluded - co-varies with a_wl and b_wl due to functional form
+#kpar_io? #FMEC excluded - constrained in literature (White et al 2000)
+
+#fd_io
+#eta_sl_io #FMEC excluded - co-varies with a_wl and b_wl due to functional form
+#g_leaf_0_io #FMEC excluded - constrained in literature to be narrower than FMEC perturbed range
+#infil_f_io #FMEC excluded Low sensitivity in US forests
+#glmin_io
+#vint_io
+#vsl_io
+
+
+
+
