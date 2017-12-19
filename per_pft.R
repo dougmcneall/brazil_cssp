@@ -160,6 +160,11 @@ true.loo = function(X,y,type){
   return(list(mean = out.mean))
 }  
 
+rmse = function(y, ydash){
+  
+  out = sqrt(   mean( (y-ydash)^2, na.rm = TRUE)   )
+  out
+}
 
 
 twoStep = function(X, y, nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, seed=NULL, trace=FALSE, maxit=100,
