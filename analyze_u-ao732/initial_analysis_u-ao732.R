@@ -1,4 +1,6 @@
 # initial_analysis_u-ao732
+# Initial look at Carbon and related outputs in the 300 member ensemble
+# u-ao732
 
 source('../per_pft.R')
 
