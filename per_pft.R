@@ -20,6 +20,19 @@ byr = rev(ryb)
 rb = brewer.pal(11, "RdBu")
 br = rev(rb)
 
+# Example of adding  density plots to a pairs plot
+dfunc.up <- function(x,y,...){
+  require(MASS)
+  require(RColorBrewer)
+  
+  rb = brewer.pal(9, "RdBu")
+  br  = rev(rb)
+  # function for plotting 2d kernel density estimates in pairs() plot.
+  kde = kde2d(x,y)
+  image(kde, col = rb, add = TRUE)
+}
+
+
 sensvar = function(oaat.pred, n, d){
   # Calculate variance as a global sensitivity meansure
   out = rep(NA,d)

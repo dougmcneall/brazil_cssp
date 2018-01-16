@@ -346,7 +346,6 @@ for(i in 1:d){
       }
   mtext(1, text = colnames(lhs)[i], line = 0.2, cex = 0.7)
 }
-#par(xpd = TRUE)
 
 reset <- function() {
   par(mfrow=c(1, 1), oma=rep(0, 4), mar=rep(0, 4), new=TRUE)
@@ -358,12 +357,151 @@ legend('top',
        col = linecols[1:4],
        lwd = 2,
        horiz = TRUE)
-#legend("top", legend=c("A", "B"), fill=c("red", "blue"), ncol=2, bty="n")
+dev.off()
+
+
+# --------------------------------------------------------------------------
+# What parts of parameter space are acceptable using AW's criteria?
+# --------------------------------------------------------------------------
+
+X.unif = samp.unif(100000, mins = rep(0, d), maxes = rep(1,d))
+colnames(X.unif) <- colnames(lhs)
+
+
+npp.unif = predict(npp.twoStep$emulator, newdata = X.unif, type = 'UK')$mean^2
+nbp.unif = predict(nbp.twoStep$emulator, newdata = X.unif, type = 'UK')$mean
+cv.unif = predict(cv.twoStep$emulator, newdata = X.unif, type = 'UK')$mean^2
+cs.unif = predict(cs.twoStep$emulator, newdata = X.unif, type = 'UK')$mean^2
+
+# npp 35-80 GtC
+# nbp > 0
+# cVeg 300 - 800 GtC
+# cSoil 750 - 3000 GtC
+
+ix.kept.npp = which(
+  (npp.unif > 35) & (npp.unif < 80)   
+)
+
+X.kept.npp = X.unif[ix.kept.npp, ]
+
+rb = brewer.pal(9, "RdBu")
+br = rev(rb)
+
+pdf(file = 'graphics/pairs_dens_npp.pdf', width = 8, height = 8)
+par(oma = c(0,0,0,3))
+
+# Emulate all input space and keep only those inputs which match a 
+# criteria (such as having absolute error below a threshold)
+
+test = pairs(X.kept.npp,
+             gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
+             panel = dfunc.up)
+
+image.plot(legend.only = TRUE,
+           zlim = c(0,1),
+           col = rb,
+           legend.args = list(text = 'Density of model runs matching the criteria', side = 3, line = 1),
+           horizontal = TRUE
+)
 dev.off()
 
 
 
+#(nbp.unif > 0) & (cv.unif >300) & (cv.unif <800) & (cs.unif > 750) & (cs.unif < 3000)
+ix.kept.nbp = which(
+  (nbp.unif > 0) 
+)
+
+X.kept.nbp = X.unif[ix.kept.nbp, ]
+
+rb = brewer.pal(9, "RdBu")
+br = rev(rb)
+
+pdf(file = 'graphics/pairs_dens_nbp.pdf', width = 8, height = 8)
+par(oma = c(0,0,0,3))
+
+# Emulate all input space and keep only those inputs which match a 
+# criteria (such as having absolute error below a threshold)
+
+test = pairs(X.kept.nbp,
+             gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
+             panel = dfunc.up)
+
+image.plot(legend.only = TRUE,
+           zlim = c(0,1),
+           col = rb,
+           legend.args = list(text = 'Density of model runs matching the criteria', side = 3, line = 1),
+           horizontal = TRUE
+)
+dev.off()
 
 
+pdf(file = 'graphics/density_npp_nbp.pdf', width = 7, height = 6)
+par(mfrow = c(4,8), mar = c(2,1,2,1), oma = c(0.5,0.5, 0.5, 0.5))
+for(i in 1:d){
+  npp.dens = density(X.kept.npp[,i])
+  nbp.dens = density(X.kept.nbp[,i])
+  ylim = c(0, max(npp.dens$y, nbp.dens$y))
+  plot(npp.dens, type = 'l', xlim = c(0,1),ylim = ylim, axes = FALSE, main = '')
+  points(nbp.dens, type = 'l', col = 'red')
+  mtext(1, text = colnames(lhs)[i], line = 0.2, cex = 0.7)
+}
 
+dev.off()
 
+#(nbp.unif > 0) & (cv.unif >300) & (cv.unif <800) & (cs.unif > 750) & (cs.unif < 3000)
+ix.kept.cv = which(
+  (cv.unif >300) & (cv.unif <800)  
+)
+
+X.kept.cv = X.unif[ix.kept.cv, ]
+
+ix.kept.cs = which(
+  (cs.unif > 750) & (cs.unif < 3000)
+)
+
+X.kept.cs = X.unif[ix.kept.cs, ]
+
+pdf(file = 'graphics/density_cv_cs.pdf', width = 7, height = 6)
+par(mfrow = c(4,8), mar = c(2,1,2,1), oma = c(0.5,0.5, 0.5, 0.5))
+for(i in 1:d){
+  cv.dens = density(X.kept.cv[,i])
+  cs.dens = density(X.kept.cs[,i])
+  ylim = c(0, max(cv.dens$y, cs.dens$y))
+  plot(cv.dens, type = 'l', xlim = c(0,1),ylim = ylim, axes = FALSE, main = '')
+  points(cs.dens, type = 'l', col = 'red')
+  mtext(1, text = colnames(lhs)[i], line = 0.2, cex = 0.7)
+}
+
+dev.off()
+
+pdf(file = 'graphics/density_all.pdf', width = 7, height = 6)
+par(mfrow = c(4,8), mar = c(2,1,2,1), oma = c(0.5,0.5, 3, 0.5))
+for(i in 1:d){
+  npp.dens = density(X.kept.npp[,i])
+  nbp.dens = density(X.kept.nbp[,i])
+  cv.dens = density(X.kept.cv[,i])
+  cs.dens = density(X.kept.cs[,i])
+  ylim = c(0, max(npp.dens$y, nbp.dens$y, cv.dens$y, cs.dens$y))
+  plot(npp.dens, type = 'l', xlim = c(0,1), ylim = ylim, axes = FALSE, main = '',
+       col = linecols[1], lwd = 2)
+  points(nbp.dens, type = 'l', col = linecols[2], lwd = 2)
+  points(cv.dens, type = 'l', col = linecols[3], lwd = 2)
+  points(cs.dens, type = 'l', col = linecols[4], lwd = 2)
+  mtext(1, text = colnames(lhs)[i], line = 0.2, cex = 0.7)
+}
+reset()
+legend('top',
+       legend = c('npp','nbp', 'cv', 'cs'), 
+       col = linecols[1:4],
+       lwd = 2,
+       horiz = TRUE)
+dev.off()
+
+ix.kept.X = which(
+  
+ (npp>35) 
+
+)
+
+#& (nbp > 0) & (cv >300) & (cv <800) & (cs> 750) & (cs < 3000)
