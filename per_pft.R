@@ -20,6 +20,9 @@ byr = rev(ryb)
 rb = brewer.pal(11, "RdBu")
 br = rev(rb)
 
+paired = brewer.pal(11,'Paired')
+linecols = c('black', paired[1], paired[2], paired[5])
+
 # Example of adding  density plots to a pairs plot
 dfunc.up <- function(x,y,...){
   require(MASS)

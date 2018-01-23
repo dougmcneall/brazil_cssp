@@ -2,8 +2,8 @@
 
 source('../per_pft.R')
 
-paired = brewer.pal(11,'Paired')
-linecols = c('black', paired[1], paired[2], paired[5])
+#paired = brewer.pal(11,'Paired')
+#linecols = c('black', paired[1], paired[2], paired[5])
 
 lhs = read.table('data/lhs_u-ao732.txt', header = TRUE)
 X = normalize(lhs)
@@ -210,22 +210,56 @@ for(i in 1:d){
 dev.off()
 
 
+# How do the sensitivities change if you rule out the
+# "Implausible" space?
 
 ## throw away nans and zeros
 ix.plausible = which(amazon_runoff_init>1)
 X.plausible = X[ix.plausible, ]
 y.plausible =  runoff_change[ix.plausible]
-
 runoff_change_plausible.twoStep = twoStep(X = X.plausible, y = y.plausible)
-
 amazon_runoff_change_plausible.oaat = predict(runoff_change_plausible.twoStep$emulator, 
                                     newdata = X.oaat, type = 'UK')
-y.oaat = amazon_runoff_change_plausible.oaat$mean
+y.plausible.oaat = amazon_runoff_change_plausible.oaat$mean
+# Another way to do this is to reject the input space that we know is no good
+# - in this case, b_wl_io below ~ 0.35 and f0_io above 0.8
 
+ix.mankeep = which(X[, which( colnames(X) == "b_wl_io")] > 0.35 & X[, which( colnames(X) == "f0_io")] <0.8)
+X.mankeep = X[ ix.mankeep, ] 
+y.mankeep=  runoff_change[ix.mankeep]
+runoff_change_mankeep.twoStep = twoStep(X = X.mankeep, y = y.mankeep)
+amazon_runoff_change_mankeep.oaat = predict(runoff_change_mankeep.twoStep$emulator, 
+                                            newdata = X.oaat, type = 'UK')
+
+y.mankeep.oaat = amazon_runoff_change_mankeep.oaat$mean
 ylim = range(y.oaat)
+
 pdf(file = 'graphics/amazon_runoff_change_plausible_oaat.pdf', width = 9, height = 6)
 par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 0.5, 0.5))
 
+for(i in 1:d){
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  plot(X.oaat[ix,i], y.plausible.oaat[ix],
+       type = 'l',
+       ylab= '', ylim = ylim, axes = FALSE, col = 'black',
+       main = '',
+       xlab = '')
+  lines(X.oaat[ix,i], y.mankeep.oaat[ix], col = 'red')
+  axis(1, col = 'grey', col.axis = 'grey', las = 1)
+  axis(2, col = 'grey', col.axis = 'grey', las = 1)
+  mtext(3, text = colnames(lhs)[i], line = 0.2, cex = 0.7)
+}
+dev.off()
+
+sensvar.plausible = sensvar(amazon_runoff_change_plausible.oaat, n = 21, d = d)
+sensvar.mankeep = sensvar(amazon_runoff_change_mankeep.oaat, n = 21, d = d)
+
+plot(1:d,sensvar.plausible )
+points(1:d, sensvar.mankeep, col = 'red')
+
+
+pdf(file = 'graphics/amazon_runoff_change_mankeep_oaat.pdf', width = 9, height = 6)
+par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 0.5, 0.5))
 for(i in 1:d){
   ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
   plot(X.oaat[ix,i], y.oaat[ix],
@@ -239,6 +273,10 @@ for(i in 1:d){
 }
 dev.off()
 
+
+
+
+###
 
 oaat.twoStep = function(design, n, med = TRUE, hold = NULL, emulator){
   # emulator is output from twoStep
