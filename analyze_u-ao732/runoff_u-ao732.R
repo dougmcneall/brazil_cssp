@@ -240,7 +240,37 @@ for(i in 1:d){
 dev.off()
 
 
+oaat.twoStep = function(design, n, med = TRUE, hold = NULL, emulator){
+  # emulator is output from twoStep
+  
+  X.oaat = oaat.design(emulator$x, n, med = TRUE)
+  y.oaat = predict(emulator$emulator, newdata = X.oaat)
+  
+  return(list(X.oaat = X.oaat, y.oaat = y.ooat))
+  
+  
+}
 
+plot.oaat(X.oaat, y.oaat, rows, cols, ...){
+  
+  ylim = range(y.oaat)
+  par(mfrow = c(rows,cols), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 0.5, 0.5))
+  
+  for(i in 1:d){
+    ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+    plot(X.oaat[ix,i], y.oaat[ix],
+         type = 'l',
+         ylab= '', ylim = ylim, axes = FALSE, col = 'black',
+         main = '',
+         xlab = '')
+    axis(1, col = 'grey', col.axis = 'grey', las = 1)
+    axis(2, col = 'grey', col.axis = 'grey', las = 1)
+    mtext(3, text = colnames(X.oaat)[i], line = 0.2, cex = 0.7)
+  }
+  dev.off()
+  
+  
+}
 
 
 
