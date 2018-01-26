@@ -84,7 +84,7 @@ globalsens <- function(lhs, response.list){
   colnames(X.oaat) = colnames(lhs)
   
   oaat.globalresponse = matrix(NA, nrow = d, ncol = length(response.list))
-  for(i in 1: length(response.list)){
+  for(i in 1: length(global_area_means.list)){
     print(i)
     try({
       y = c(response.list[i], recursive = TRUE)

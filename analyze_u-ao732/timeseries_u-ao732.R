@@ -5,6 +5,8 @@
 
 source('../per_pft.R')
 
+years = 1861:2014
+
 load_ts_ensemble = function(fn, na.strings='-9.990000000000000000e+02', skip=1){
   dat = read.table(fn, header = FALSE, skip = skip, na.strings=na.strings)
   dat
@@ -32,25 +34,36 @@ twoStep.sens = function(X, y, n=21, predtype = 'UK', nugget=NULL, nuggetEstim=FA
   
 }
 
+anomalizeTSmatrix = function(x, ix){
+  subx = x[ ,ix]
+  sweepstats = apply(subx, 1, FUN=mean)
+  anom = sweep(x, 1, sweepstats, FUN = '-')
+  anom
+}
+
+ts.ensemble.change = function(x, startix, endix){
+  start.subx = x[ ,startix]
+  start.stats = apply(start.subx, 1, FUN=mean)
+  
+  end.subx = x[ ,endix]
+  end.stats = apply(end.subx, 1, FUN=mean)
+  
+  out = end.stats - start.stats
+  out
+}
+
 lhs = read.table('data/lhs_u-ao732.txt', header = TRUE)
 X = normalize(lhs)
 colnames(X) = colnames(lhs)
 d = ncol(X)
 
-fnvec = dir('data', pattern = 'Annual.Amazon')
+fnvec = dir('data', pattern = 'Annual.Amls()azon')
 fnlocvec = paste0('data/', fnvec)
-
-cs = load_ts_ensemble(fnlocvec[1])/1e13
-cs.start = cs[,1]
-
-
-test = twoStep.sens(X=X, y = cs.start)
-# normalise output from the SA
 
 startvalue.sensmat = matrix(NA, ncol=d, nrow=length(fnlocvec))
 colnames(startvalue.sensmat) = colnames(lhs)
 
-# Include changes
+# Run over all outputs
 for(i in 1:length(fnlocvec)){
   
   dat = load_ts_ensemble(fnlocvec[i])
@@ -62,10 +75,6 @@ for(i in 1:length(fnlocvec)){
 }
 
 
-
-
-fnstart = lapply(fnvec, grep, "Annual.Amazon")
-
 # Extract the bit of the filename that describes the data
 fs = lapply(fnvec,regexpr, pattern = 'Annual.Amazon')
 fe = lapply(fnvec,regexpr, pattern = 'global_sum.txt')
@@ -75,31 +84,70 @@ for(i in 1:length(fnvec)){
   fnams[i] = substr(fnvec[i], attr(fs[[1]], 'match.length')+2, fe[[i]][1]-2)
 }
 
+greys = brewer.pal(9, "Greys")
+blues = brewer.pal(9, "Blues")
 
-image(t(startvalue.sensmat), col = yg, axes = FALSE)
-
-dev.new(width = 10, height = 5)
+pdf(file = 'graphics/sensitivity_matrix_fullspace.pdf', width = 9, height = 5)
 par(mar = c(8,7,4,7))
-image(t(startvalue.sensmat), col = yg, axes = FALSE)
+image(t(startvalue.sensmat), col = blues, axes = FALSE)
 axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
+axis(2, at = seq(from =0, to = 1, by = 1/(length(fnams)-1) ),
+     labels = fnams, las = 1)
+
+dev.off()
 
 
-axis(2, at = seq(from =0, to = 1, by = 1/(length(fnams)-1) ), labels = fnams, las = 1)
+change.sensmat = matrix(NA, ncol=d, nrow=length(fnlocvec))
+colnames(change.sensmat) = colnames(lhs)
 
-
-
-
-
-filelist.global <- paste0('frac_area_mean/global_area_mean_PFT',0:16, '.txt')
-filelist.wus <- paste0('frac_area_mean/WUS_area_mean_PFT',0:16, '.txt')
-filelist.sam <- paste0('frac_area_mean/SAM_area_mean_PFT',0:16, '.txt')
-
-c.df <- function(fn){
-  out = c(read.table(fn, header = FALSE, skip = 1), recursive = TRUE)
-  out
+for(i in 1:length(fnlocvec)){
+  
+  dat = load_ts_ensemble(fnlocvec[i])
+  dat.change = ts.ensemble.change(dat, 1:30, 125:154)
+  
+  ts.sens = twoStep.sens(X=X, y = dat.change)
+  sens.norm = ts.sens/max(ts.sens)
+  change.sensmat[i, ] = sens.norm
 }
 
-# creates a list of (PFTs) long, each element of which has (ensemble members) data points
-global_area_means.list <- lapply(filelist.global, c.df)
-global_area_means_standard <- as.numeric(
-  readLines('frac_area_mean/global_area_mean_PFTs_standard.txt'))
+pdf(file = 'graphics/sensitivity_tschange_fullspace.pdf', width = 9, height = 5)
+par(mar = c(8,7,4,7))
+image(t(change.sensmat), col = blues, axes = FALSE)
+axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
+axis(2, at = seq(from =0, to = 1, by = 1/(length(fnams)-1) ),
+     labels = fnams, las = 1)
+
+dev.off()
+
+
+# Plot the timeseries
+
+pdf(width = 7, height = 12, file = 'graphics/tsplot.pdf')
+par(mfrow = c(6, 2), mar = c(2,2,2,2))
+for(i in 1:length(fnlocvec)){
+  
+  dat = load_ts_ensemble(fnlocvec[i])
+  dat.anom = anomalizeTSmatrix(dat, 1:30)
+  
+  matplot(years, t(dat), type = 'l', col = linecols, lty = 'solid', 
+          lwd = 0.5, axes = FALSE,
+          main = fnams[i])
+  axis(1, col = 'grey')
+  axis(2, col = 'grey')
+  
+  matplot(years, t(dat.anom), type = 'l', col = linecols,
+          lty = 'solid',lwd = 0.5, axes = FALSE)
+  axis(1, col = 'grey')
+  axis(2, col = 'grey')
+    
+}
+dev.off()
+
+
+
+
+
+
+
+
+
