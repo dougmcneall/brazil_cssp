@@ -64,6 +64,27 @@ for(i in 1:length(fnlocvec)){
 
 
 
+fnstart = lapply(fnvec, grep, "Annual.Amazon")
+
+# Extract the bit of the filename that describes the data
+fs = lapply(fnvec,regexpr, pattern = 'Annual.Amazon')
+fe = lapply(fnvec,regexpr, pattern = 'global_sum.txt')
+
+fnams = rep(NA, length(fnvec))
+for(i in 1:length(fnvec)){
+  fnams[i] = substr(fnvec[i], attr(fs[[1]], 'match.length')+2, fe[[i]][1]-2)
+}
+
+
+image(t(startvalue.sensmat), col = yg, axes = FALSE)
+
+dev.new(width = 10, height = 5)
+par(mar = c(8,7,4,7))
+image(t(startvalue.sensmat), col = yg, axes = FALSE)
+axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
+
+
+axis(2, at = seq(from =0, to = 1, by = 1/(length(fnams)-1) ), labels = fnams, las = 1)
 
 
 
