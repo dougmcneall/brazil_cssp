@@ -44,6 +44,7 @@ dev.off()
 
 amazon_runoff_init = amazon_runoff_historical[,1]
 
+
 # A significant fraction of runs are close to zero runoff in the Amazon,
 # which is handy
 pdf(file='graphics/amazon_runoff_init_hist.pdf')
@@ -312,6 +313,34 @@ plot.oaat(X.oaat, y.oaat, rows, cols, ...){
   
 }
 
+
+# This section looks at the thresholds where the model crashes
+
+allstanparms = read.table('data/allstanparms_u-ao732.txt', header = TRUE)
+# where is max f0?
+
+f0.lhs.ix = which( colnames(lhs) == "f0_io")
+
+f0.stanparms.ix = grep('f0', colnames(allstanparms))
+
+max.f0 = max(lhs[ ,f0.lhs.ix  ])
+max.f0.pft = max.f0 * allstanparms[f0.stanparms.ix]
+
+max.f0.max = max.f0 * allstanparms[f0.stanparms.ix]
+
+# 0.931 is the maximum f0 standard parameter
+plot(lhs[, 8]*0.931, amazon_runoff_init )
+abline(v=1)
+
+
+b_wl.lhs.ix = which( colnames(lhs) == "b_wl_io")
+b_wl.stanparms.ix = grep('b_wl', colnames(allstanparms))
+max.b_wl = max(lhs[ ,b_wl.lhs.ix  ])
+min.b_wl = min(lhs[ ,b_wl.lhs.ix  ])
+
+min.b_wl.min = min.b_wl * allstanparms[b_wl.stanparms.ix ]
+
+plot(lhs[, 4 * 1.00717], amazon_runoff_init )
 
 
 
