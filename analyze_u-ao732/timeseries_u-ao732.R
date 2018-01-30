@@ -5,7 +5,11 @@
 
 source('../per_pft.R')
 
-years = 1861:2014
+
+reset <- function() {
+  par(mfrow=c(1, 1), oma=rep(0, 4), mar=rep(0, 4), new=TRUE)
+  plot(0:1, 0:1, type="n", xlab="", ylab="", axes=FALSE)
+}
 
 load_ts_ensemble = function(fn, na.strings='-9.990000000000000000e+02', skip=1){
   dat = read.table(fn, header = FALSE, skip = skip, na.strings=na.strings)
@@ -52,6 +56,8 @@ ts.ensemble.change = function(x, startix, endix){
   out
 }
 
+years = 1861:2014
+
 # Load up the data
 lhs = read.table('data/lhs_u-ao732.txt', header = TRUE)
 X = normalize(lhs)
@@ -95,7 +101,6 @@ for(i in 1:length(fnlocvec)){
     
 }
 dev.off()
-
 
 
 
@@ -214,6 +219,18 @@ axis(2, las = 1)
 dev.off()
 
 
+runoffconst.sort = sort(abssum.runoffconst.sensmat, decreasing = TRUE, index.return = TRUE)
+
+pdf(file = 'graphics/ordered_oaat_SA_runoff_constrained.pdf', width = 7, height = 5)
+par(mar = c(8,4,3,1))
+plot(1:d, runoffconst.sort$x, axes = FALSE, pch = 19,
+     xlab = '', ylab = 'OAAT Sensitivity Index')
+segments(x0 = 1:d, y0 = rep(0,d), x1 = 1:d, y1 = runoffconst.sort$x)
+axis(1, at = 1:d,  labels = names(runoffconst.sort$x), las = 3, cex.axis = 0.8)
+axis(2,las =1)
+dev.off()
+
+
 # one-at-time sensitivity plots, containing all outputs
 n = 21
 X.oaat.runoff = oaat.design(X.runoff, n = n)
@@ -239,7 +256,7 @@ oaat.norm = normalize(oaat.mat)
 linecols.ext = c('black', paired)
 
 ylim = c(0,1)
-dev.new(width = 10, height = 10)
+pdf(file = 'graphics/runoff_constrained_amazon_oaat.pdf', width = 9, height = 9)
 par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
 
 for(i in 1:d){
@@ -248,12 +265,13 @@ for(i in 1:d){
   y.oaat = oaat.norm[,1]
 
   plot(X.oaat.runoff[ix,i], y.oaat[ix],
-       type = 'l',
-       ylab= '', ylim = ylim, axes = FALSE, col = j,
+       type = 'n',
+       ylab= '', ylim = ylim, axes = FALSE,
        main = '',
        xlab = '')
   
   for(j in 1:length(fnlocvec)){
+    
     y.oaat = oaat.norm[ix,j]
     lines(X.oaat.runoff[ix,i],y.oaat, col = linecols.ext[j], lwd = 2) 
   }
@@ -264,11 +282,6 @@ for(i in 1:d){
 
 }
 
-reset <- function() {
-  par(mfrow=c(1, 1), oma=rep(0, 4), mar=rep(0, 4), new=TRUE)
-  plot(0:1, 0:1, type="n", xlab="", ylab="", axes=FALSE)
-}
-
 reset()
 legend('top',
        legend = fnams, 
@@ -276,7 +289,7 @@ legend('top',
        lwd = 2,
        horiz = TRUE)
   
-#dev.off()
+dev.off()
 
 
 
