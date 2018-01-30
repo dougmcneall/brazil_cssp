@@ -292,7 +292,9 @@ legend('top',
 dev.off()
 
 
-
+# Now apply constraints to the global data and apply it to the local.
+#
+#
 
 
 
