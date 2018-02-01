@@ -79,6 +79,10 @@ for(i in 1:length(fnvec)){
 greys = brewer.pal(9, "Greys")
 blues = brewer.pal(9, "Blues")
 
+# -----------------------------------------------------------------------------------
+# Analysis starts here
+#
+# -----------------------------------------------------------------------------------
 
 # Plot the timeseries
 pdf(width = 7, height = 12, file = 'graphics/tsplot.pdf')
@@ -102,8 +106,7 @@ for(i in 1:length(fnlocvec)){
 }
 dev.off()
 
-
-
+# Sensitivity analysis to starting value
 startvalue.sensmat = matrix(NA, ncol=d, nrow=length(fnlocvec))
 colnames(startvalue.sensmat) = colnames(lhs)
 
@@ -173,14 +176,10 @@ dev.off()
 # remove parts of the parameter space where the model produces bad output,
 # and then re-do the sensitivity plots.
 
-# Golbal numbers - what would these look like 
-# npp 35-80 GtC
-# nbp > 0
-# cVeg 300 - 800 GtC
-# cSoil 750 - 3000 GtC
-
 # First, remove everything with terrible runoff.
-# 
+#
+
+
 
 runoff = load_ts_ensemble(fnlocvec[6])/1e8
 runoff.ix = which(runoff[,1] > 0.8)
@@ -291,12 +290,184 @@ legend('top',
   
 dev.off()
 
-
+# --------------------------------------------------------------------------------
 # Now apply constraints to the global data and apply it to the local.
 #
 #
+#
+# npp 35-80 GtC
+# nbp > 0
+# cVeg 300 - 800 GtC
+# cSoil 750 - 3000 GtC
+# --------------------------------------------------------------------------------
+#dir('data', pattern = 'Annual/.(?!Amazon).*')
+fnallvec = dir('data', pattern = 'Annual')
+# WARNING - hard coded hack to sort
+fidx = grep("Annual.(?!Amazon).*", fnallvec, perl=TRUE)
+fnvec = fnallvec[fidx]
+fnlocvec = paste0('data/', fnvec)
+
+# Extract the bit of the filename that describes the data
+fs = lapply(fnvec,regexpr, pattern = 'Annual')
+fe = lapply(fnvec,regexpr, pattern = 'global_sum.txt')
+
+fnams = rep(NA, length(fnvec))
+for(i in 1:length(fnvec)){
+  fnams[i] = substr(fnvec[i], attr(fs[[1]], 'match.length')+2, fe[[i]][1]-2)
+}
 
 
 
+datmat = matrix(nrow = nrow(lhs), ncol = length(fnlocvec))
 
+for(i in 1:length(fnlocvec)){
+  dat = load_ts_ensemble(fnlocvec[i])
+  dat.modern = dat[,135:154]
+  mean.modern = apply(dat.modern, 1, mean)
+  datmat[ , i] = mean.modern
+}
+colnames(datmat) = fnams
+
+norm.vec = c(1e12, 1e12, 1e6, 1e12, 1e12, 1e9)
+
+dat.norm = sweep(datmat, 2, norm.vec, FUN = '/')
+
+dev.new(width = 9, height = 10)
+par(mfrow = c(3,2))
+for(i in 1:6){
+  hist(dat.norm[,i], main = fnams[i])
+}
+
+# Constrain with runoff - removes 62 members
+dat.runoffconst  = dat.norm[dat.norm[,'runoff'] >0.5, ]
+
+dev.new(width = 9, height = 10)
+par(mfrow = c(3,2))
+for(i in 1:6){
+  hist(dat.runoffconst[,i], main = fnams[i])
+}
+
+#constrain with nbp - removes 209 members (not failed runoff)
+dat.nbpconst  = dat.norm[dat.norm[,'nbp'] >= 0, ]
+dev.new(width = 9, height = 10)
+par(mfrow = c(3,2))
+for(i in 1:6){
+  hist(dat.nbpconst[,i], main = fnams[i])
+}
+
+# constrain with npp - removes 172 members (including failed runoff)
+dat.nppconst  = dat.norm[dat.norm[,'npp_n_gb'] > 35 & dat.norm[,'npp_n_gb'] <80, ]
+dev.new(width = 9, height = 10)
+par(mfrow = c(3,2))
+for(i in 1:6){
+  hist(dat.nppconst[,i], main = fnams[i])
+}
+
+
+# constrain with cv - removes 255 members (including failed runoff)
+dat.cvconst  = dat.norm[dat.norm[,'cv'] > 300 & dat.norm[,'cv'] <800, ]
+dev.new(width = 9, height = 10)
+par(mfrow = c(3,2))
+for(i in 1:6){
+  hist(dat.cvconst[,i], main = fnams[i])
+}
+
+
+# constrain with cs - removes 149 members (not failed runoff)
+dat.csconst  = dat.norm[dat.norm[,'cs_gb'] > 750 & dat.norm[,'cs_gb'] <3000, ]
+dev.new(width = 9, height = 10)
+par(mfrow = c(3,2))
+for(i in 1:6){
+  hist(dat.csconst[,i], main = fnams[i])
+}
+
+# sensitivity using npp as a constraint
+npp.ix = which(dat.norm[,'npp_n_gb'] > 35 & dat.norm[,'npp_n_gb'] <80)
+X.npp = X[npp.ix, ]
+
+nppconst.sensmat = matrix(NA, ncol=d, nrow=length(fnlocvec))
+colnames(nppconst.sensmat) = colnames(lhs)
+
+# Run over all outputs
+for(i in 1:ncol(dat.norm)){
+  
+  dat.const = dat.norm[npp.ix, i]
+  
+  ts.sens = twoStep.sens(X=X.npp, y = dat.const)
+  sens.norm = ts.sens/max(ts.sens)
+  nppconst.sensmat[i, ] = sens.norm
+}
+
+abssum.nppconst.sensmat = apply(abs(nppconst.sensmat), 2, sum)
+
+pdf(file = 'graphics/sensitivity_matrix_npp_constrained.pdf', width = 9, height = 9)
+par(mfrow = c(2,1), mar = c(8,7,3,2))
+image(t(nppconst.sensmat), col = blues, axes = FALSE)
+axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
+axis(2, at = seq(from =0, to = 1, by = 1/(length(fnams)-1) ),
+     labels = fnams, las = 1)
+
+par(mar = c(8,7,0,2))
+plot(1:d, abssum.nppconst.sensmat, axes = FALSE, xlab = '', ylab = 'Sum abs. sensitivity', pch = 19)
+segments(x0 = 1:d, y0 = rep(0,d), x1 = 1:d, y1 = abssum.nppconst.sensmat)
+axis(1,labels = colnames(lhs), at = 1:d, las=3, cex.axis = 0.8 )
+axis(2, las = 1) 
+dev.off()
+
+
+
+n = 21
+X.oaat.npp = oaat.design(X.npp, n = n)
+colnames(X.oaat.npp) = colnames(lhs)
+
+oaat.mat.npp = matrix(NA, ncol = length(fnlocvec), nrow = nrow(X.oaat.npp)) 
+
+for(i in 1:length(fnlocvec)){
+  
+  dat.const = dat.norm[npp.ix,i]
+  em = twoStep(X = X.npp, y = dat.const)
+  pred = predict(em$emulator, newdata = X.oaat.npp, type = 'UK')
+
+  oaat.mat.npp[, i] = pred$mean
+
+}
+
+oaat.npp.norm = normalize(oaat.mat.npp)
+linecols.ext = c('black', paired)
+
+ylim = c(0,1)
+pdf(file = 'graphics/npp_constrained_global_oaat.pdf', width = 9, height = 9)
+par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
+
+for(i in 1:d){
+  
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  y.oaat = oaat.npp.norm[,1]
+
+  plot(X.oaat.npp[ix,i], y.oaat[ix],
+       type = 'n',
+       ylab= '', ylim = ylim, axes = FALSE,
+       main = '',
+       xlab = '')
+  
+  for(j in 1:length(fnlocvec)){
+    
+    y.oaat = oaat.npp.norm[ix,j]
+    lines(X.oaat.npp[ix,i],y.oaat, col = linecols.ext[j], lwd = 2) 
+  }
+  
+  axis(1, col = 'grey', col.axis = 'grey', las = 1)
+  axis(2, col = 'grey', col.axis = 'grey', las = 1)
+  mtext(3, text = colnames(lhs)[i], line = 0.2, cex = 0.7)  
+
+}
+
+reset()
+legend('top',
+       legend = fnams, 
+       col = linecols.ext,
+       lwd = 2,
+       horiz = TRUE)
+  
+dev.off()
 
