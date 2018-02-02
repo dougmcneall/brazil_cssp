@@ -5,6 +5,23 @@
 
 source('../per_pft.R')
 
+normalize.wrt <- function(a,b){
+  ## n.wrt(x)
+##
+## A function that takes a matrix a and normalizes each column,
+## from zero to 1, depending upon the minimum and maximum of
+## matrix b.
+##
+## D.McNeall 27th November 2006
+## I think this came from RKSH!
+##
+  n <- nrow(a)
+  mmins <- t(kronecker(apply(b,2,min),t(rep(1,n))))
+  mmaxs <- t(kronecker(apply(b,2,max),t(rep(1,n))))
+
+  (a-mmins)/(mmaxs-mmins)
+}
+
 
 reset <- function() {
   par(mfrow=c(1, 1), oma=rep(0, 4), mar=rep(0, 4), new=TRUE)
@@ -60,6 +77,10 @@ years = 1861:2014
 
 # Load up the data
 lhs = read.table('data/lhs_u-ao732.txt', header = TRUE)
+stanparam = read.table('data/stanparms_u-ao732.txt', header = TRUE)
+stanparam = matrix(c(rep(1, 31),0.01), nrow = 1)
+stanparam.norm = normalize.wrt(stanparam, lhs)
+
 X = normalize(lhs)
 colnames(X) = colnames(lhs)
 d = ncol(X)
