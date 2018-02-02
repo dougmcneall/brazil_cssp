@@ -339,7 +339,12 @@ for(i in 1:6){
 }
 
 # Constrain with runoff - removes 62 members
-dat.runoffconst  = dat.norm[dat.norm[,'runoff'] >0.5, ]
+globrunoff.ix = dat.norm[,'runoff'] >0.5
+dat.globrunoff  = dat.norm[globrunoff.ix, ]
+X.globrunoff = X[globrunoff.ix, ]
+
+dev.new(width = 8, height = 8)
+pairs(X.globrunoff[,1:10], xlim = c(0,1), ylim =c(0,1), pch = 19, gap = 0)
 
 dev.new(width = 9, height = 10)
 par(mfrow = c(3,2))
@@ -470,4 +475,105 @@ legend('top',
        horiz = TRUE)
   
 dev.off()
+
+
+# Build an emulator with the runoff-constrained ensemble
+
+
+X.oaat.globrunoff = oaat.design(X.globrunoff, n = 21)
+
+#produce an oaat output matrix
+y.oaat.globrunoff  = matrix(nrow = nrow(X.oaat.globrunoff),
+                            ncol = ncol(dat.globrunoff ))
+
+colnames(y.oaat.globrunoff) = colnames(dat.globrunoff)
+
+for(i in 1:ncol(y.oaat.globrunoff)){
+  
+  em = twoStep(X = X.globrunoff, y = dat.globrunoff[,i])
+  y.oaat = predict(em$emulator, newdata = X.oaat.globrunoff, type = 'UK')
+  y.oaat.globrunoff[,i] = y.oaat$mean
+  
+}
+
+
+# The idea is to compare the sensitivity when constrained by each global thing.
+
+# Visualise the constrained space ...
+mins  = apply(X.globrunoff, 2, min)
+maxes = apply(X.globrunoff, 2, max)
+
+nsamp.unif = 100000
+X.unif = samp.unif(nsamp.unif, mins = mins, maxes = maxes)
+
+y.unif = matrix(nrow = nsamp.unif, ncol = ncol(dat.globrunoff))
+colnames(y.unif) = colnames(dat.globrunoff)
+
+for(i in 1:ncol(y.unif)){
+  em = twoStep(X = X.globrunoff, y = dat.globrunoff[,i])
+  pred = predict(em$emulator, newdata = X.unif, type = 'UK')
+  y.unif[,i] = pred$mean
+  
+}
+
+dev.new(width = 7, height = 7)
+par(mfrow = c(2,3))
+
+for(i in 1:ncol(y.unif)){
+  hist(y.unif[,i], main = fnams[i])
+  
+}
+
+# Now apply constraints to the output matrix
+# npp 35-80 GtC
+# nbp > 0
+# cVeg 300 - 800 GtC
+# cSoil 750 - 3000 GtC
+
+ix.kept = which(y.unif[,'cs_gb'] > 750 & y.unif[,'cs_gb'] < 3000 & y.unif[,'cv'] > 300 & y.unif[,'cv'] < 800 & y.unif[,'npp_n_gb'] > 35 & y.unif[,'npp_n_gb'] < 80)
+X.kept = X.unif[ix.kept, ]
+
+rb = brewer.pal(9, "RdBu")
+br = rev(rb)
+
+pdf(file = 'graphics/pairs_dens_all_constraints.pdf', width = 10, height = 10)
+par(oma = c(0,0,0,3))
+
+# Emulate all input space and keep only those inputs which match a 
+# criteria (such as having absolute error below a threshold)
+
+test = pairs(X.kept,
+             labels = 1:d,
+             gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
+             panel = dfunc.up,
+             cex.labels = 1,
+             col.axis = 'white')
+
+image.plot(legend.only = TRUE,
+           zlim = c(0,1),
+           col = rb,
+           legend.args = list(text = 'Density of model runs matching the criteria', side = 3, line = 1),
+           horizontal = TRUE
+)
+#par(xpd = NA)
+#text(0.2, 0.6, labels = paste0(colnames(lhs)[1:5],'\n'))
+legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
+
+dev.off()
+
+pdf(file = 'graphics/hist_kept_all_constraints.pdf', width = 8, height = 6)
+par(mfrow =c(4,8), fg = 'white', mar = c(3,1,3,1))
+for(i in 1:d){
+  
+  hist(X.kept[, i], xlim = c(0,1), axes = FALSE, col = 'black',
+       xlab = '', ylab = '', main = '')
+  #axis(1, col = 'black')
+  mtext(side = 3, text = colnames(X.kept)[i], line = 1, col = 'black', cex = 0.8)
+  
+}
+dev.off()
+
+
+
+
 
