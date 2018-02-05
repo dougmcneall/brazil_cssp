@@ -501,7 +501,7 @@ dev.off()
 # Build an emulator with the runoff-constrained ensemble
 
 
-X.oaat.globrunoff = oaat.design(X.globrunoff, n = 21)
+X.oaat.globrunoff = oaat.design(X.globrunoff, med = FALSE, hold = stanparam.norm, n = 21)
 
 #produce an oaat output matrix
 y.oaat.globrunoff  = matrix(nrow = nrow(X.oaat.globrunoff),
@@ -583,16 +583,19 @@ legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
 dev.off()
 
 pdf(file = 'graphics/hist_kept_all_constraints.pdf', width = 8, height = 6)
+#dev.new(width = 8, height = 6)
 par(mfrow =c(4,8), fg = 'white', mar = c(3,1,3,1))
 for(i in 1:d){
   
   hist(X.kept[, i], xlim = c(0,1), axes = FALSE, col = 'black',
        xlab = '', ylab = '', main = '')
+  abline(v = stanparam.norm[i], col = 'red')
   #axis(1, col = 'black')
   mtext(side = 3, text = colnames(X.kept)[i], line = 1, col = 'black', cex = 0.8)
   
 }
 dev.off()
+
 
 
 
