@@ -50,6 +50,18 @@ pch.congo <- 2
 pch.seasia <- 5
 pch.namerica <- 4
 
+dfunc.up <- function(x,y,...){
+  require(MASS)
+  require(RColorBrewer)
+  
+  br <- brewer.pal(9, 'Blues')
+  # function for plotting 2d kernel density estimates in pairs() plot.
+  kde <- kde2d(x,y)
+  image(kde, col = br, add = TRUE)
+  
+}
+
+
 X = famous_agg[, 2:8]
 X.norm = normalize(X)
 X.stan.norm <- normalize(matrix(X.standard, nrow = 1), wrt = X)
@@ -138,46 +150,6 @@ obs_congo - pred.congo.bc$mean
 obs_seasia - standard.seasia$mean
 obs_seasia- pred.seasia.bc$mean
 
-dev.new(width=7, height=5)
-#pdf(width = 7, height = 5, file='../graphics/bias_corrected_fractions.pdf')
-par(las=1)
-
-plot(c(1,2,3), c(obs_amazon, obs_congo, obs_seasia), xlim=c(0.5,3.5), ylim=c(0,1), pch=19,
-     col = c(col.amaz, col.congo, col.seasia), cex=1.5, axes=FALSE, xlab='', ylab='Forest fraction')
-
-axis(1, labels = c('Amazon', 'Africa', 'SE Asia'), at = c(1.1,2.1,3.1))
-axis(2)
-
-points(c(1.1,2.1,3.1), c(standard.amazon$mean, standard.congo$mean,standard.seasia$mean), pch=19)
-
-segments(1.1, standard.amazon$mean - standard.amazon$sd,
-         1.1, standard.amazon$mean + standard.amazon$sd, col='black')
-
-segments(2.1, standard.congo$mean - standard.congo$sd,
-         2.1, standard.congo$mean + standard.congo$sd, col='black')
-
-segments(3.1, standard.seasia$mean - standard.seasia$sd,
-         3.1, standard.seasia$mean + standard.seasia$sd, col='black')
-
-points(c(1.2,2.2,3.2),c(pred.amaz.bc$mean, pred.congo.bc$mean, pred.seasia.bc$mean),  col='red', pch=19)
-
-segments(1.2, pred.amaz.bc$mean - pred.amaz.bc$sd,
-         1.2, pred.amaz.bc$mean + standard.amazon$sd, col='red')
-
-segments(2.2, pred.congo.bc$mean - standard.congo$sd,
-         2.2, pred.congo.bc$mean + standard.congo$sd, col='red')
-
-segments(3.2, pred.seasia.bc$mean - pred.seasia.bc$sd,
-         3.2, pred.seasia.bc$mean + pred.seasia.bc$sd, col='red')
-
-text(1, obs_amazon, 'observation', pos=2, col='grey', cex=0.9)
-text(1.1, standard.amazon$mean, 'default\nparameters', pos=4, cex=0.9, col='grey')
-text(1.2, pred.amaz.bc$mean, 'bias\ncorrected', pos=4, col='grey', cex=0.9)
-#abline(v = c(1.5,2.5), col = 'grey', lty = 'dashed')
-#abline(h = c(0.2,0.4, 0.6, 0.8), col = 'grey', lty = 'dashed')
-#dev.off()
-
-
 # --------------------------------------------------------------------
 # Sensitivity analysis, including temperature and precipitation
 # --------------------------------------------------------------------
@@ -194,17 +166,12 @@ pred.sens = predict(fit.sens, newdata = X.oat, type = 'UK')
 col.chosen = col.amaz
 col.transp = adjustcolor(col.chosen, alpha = 0.5)
 
-dev.new(width = 5, height = 5)
-#pdf(width = 7, height = 6, file = '../graphics/sensitivity_TP_amazon.pdf') 
+#dev.new(width = 5, height = 5)
+pdf(width = 7, height = 6, file = 'graphics/sensitivity_TP_amazon.pdf') 
 par(mfrow = c(2,5), las = 1, mar = c(5,0.5,2,0.5), oma = c(0,5,0,0), fg = 'grey')
 for(i in 1: ncol(X_tropics_norm)){
   
   ix <- seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
-  
-  #  plot(X.tropics.norm[, i], Y.tropics, xlab = colnames(X.tropics.norm)[i],
-  #     col = NULL, pty = 'n', ylim = c(0,1), bty = 'n',
-  #     ylab = '', cex.lab = 1.5, cex.axis = 1.5, axes = FALSE)
-  
   plot(X.oat[ix, i], pred.sens$mean[ix], ylim = c(0,1), xlab = colnames(X.oat)[i], type = 'n', axes = FALSE)
   axis(1)
   if (i==1 | i==6 ) {axis(2)
@@ -217,8 +184,7 @@ for(i in 1: ncol(X_tropics_norm)){
   
   lines(X.oat[ix, i], pred.sens$mean[ix], ylim = c(0,1), xlab = colnames(X.oat)[i], col = col.chosen )
 }
-
-#dev.off()
+dev.off()
 
 inputs.set <- function(X, y, thres, obs, obs.sd = 0, disc = 0, disc.sd = 0, n = 100000, abt = FALSE){ 
   # find a set of inputs that are consistent with a particular
@@ -260,10 +226,12 @@ plausible.amazon.bc <- inputs.set(X = X_tropics_norm, y = Y_tropics,thres = 3,
                                   abt = FALSE)
 
 
-# Here is the emulated surface
-#pdf(file = '../graphics/emulated_fraction_vs_temp_precip.pdf',width = 7, height = 7)
-dev.new(width = 5, height =5)
-quilt.plot(plausible.amazon.bc$X.unif[,8], plausible.amazon.bc$X.unif[, 9], plausible.amazon.bc$pred$mean, col = byr, xlab = 'Normalised regional temperature', ylab = 'Normalised regional precipitation', legend.args = list(text = "forest\nfraction",col="black", cex=1.2, side=3, line=1))
+# Emulated surface of forest fraction given T & P
+#dev.new(width = 5, height =5)
+pdf(file = 'graphics/emulated_fraction_vs_temp_precip.pdf',width = 7, height = 7)
+quilt.plot(plausible.amazon.bc$X.unif[,8], plausible.amazon.bc$X.unif[, 9], plausible.amazon.bc$pred$mean, 
+           col = byr, xlab = 'Normalised regional temperature', ylab = 'Normalised regional precipitation',
+           legend.args = list(text = "forest\nfraction",col="black", cex=1.2, side=3, line=1))
 cex = 1.5
 points(X_tropics_norm[1:100,8], X_tropics_norm[1:100,9], col = 'black', bg = col.amaz, pch = 21, cex = cex)
 points(X_tropics_norm[101:200,8], X_tropics_norm[101:200,9], col = 'black', bg = col.seasia, pch = 21, cex = cex)
@@ -276,19 +244,10 @@ points(tp.seasia.norm, col = 'black', pch = 21, cex = 2.5, bg = col.seasia, lwd 
 text(tp.amaz.norm, 'Amazon', pos = 4, font = 2)
 text(tp.congo.norm, 'Central Africa', pos = 4, font = 2)
 text(tp.seasia.norm, 'SE Asia', pos = 4, font = 2)
-
-#dev.off()
-
-#test.col = colorRampPalette(byr)
-#col = test.col(5)
-#z = Y_tropics
-#colors = col
-#zcolor <- colors[(z - min(z))/diff(range(z))*5 + 1] 
-#plot(X_tropics[, 8], X_tropics[, 9], col = 'black', bg = zcolor, pch = 21, cex = 2)
+dev.off()
 
 # Plot colour as the third dimension, to compare model runs with
 # mean emulated surface.
-
 col3rd = function(n, pal, z){
   # produce a set of colours that match the values of z
   # Use for colour in 3rd dimension on a scatterplot.
@@ -307,7 +266,7 @@ allz = c(Y_tropics,plausible.amazon.bc$pred$mean)
 zcolor = col3rd(n=11, pal=byr, z = allz) 
 plot(X_tropics[, 8], X_tropics[, 9], col = 'black', bg = zcolor, pch = 21, cex = 2)
 
-dev.new(width = 5, height =5)
+pdf(file = 'graphics/emulated_fraction_vs_temp_precip_pcolcor.pdf',width = 7, height = 7)
 quilt.plot(plausible.amazon.bc$X.unif[,8], plausible.amazon.bc$X.unif[, 9], plausible.amazon.bc$pred$mean, col = byr, xlab = 'Normalised regional temperature', ylab = 'Normalised regional precipitation', legend.args = list(text = "forest\nfraction",col="black", cex=1.2, side=3, line=1))
 cex = 1.5
 lwd = 2
@@ -322,14 +281,15 @@ points(tp.congo.norm, col = 'black', pch = 21, cex = 2.5, bg = col.congo, lwd = 
 text(tp.amaz.norm, 'Amazon', pos = 4, font = 2)
 text(tp.congo.norm, 'Central Africa', pos = 4, font = 2)
 text(tp.seasia.norm, 'SE Asia', pos = 4, font = 2)
+dev.off()
 
+# ------------------------------------------------------------------------
 # We worked out the response surface for y = f(X, T, P).
 # Now bias correct T and P in all of the ensemble members.
-# Where do they move to on the map?
+# ------------------------------------------------------------------------
 
 # Fit the whole data set
 fit.tropics = km(~.,design = X_tropics_norm, response = Y_tropics)
-
 
 # Bias correct the model runs using the observed (normalised)
 # temperature and precipitation.
@@ -364,8 +324,7 @@ mean(abs(model_runs.bc$mean[101:200] - obs_seasia))
 mean(abs(Y_tropics[201:300] - obs_congo))
 mean(abs(model_runs.bc$mean[201:300] - obs_congo))
 
-dev.new(width=7, height=5)
-#pdf(width = 7, height = 5, file='../graphics/bias_corrected_fractions.pdf')
+pdf(width = 7, height = 5, file='graphics/bias_corrected_fractions.pdf')
 par(las=1)
 plot(c(1,2,3), c(obs_amazon, obs_congo, obs_seasia), xlim=c(0.5,3.5), ylim=c(0,1), pch=19,
      col = c(col.amaz, col.congo, col.seasia), cex=1.5, axes=FALSE, xlab='', ylab='Forest fraction',
@@ -414,33 +373,13 @@ text(1.2, pred.amaz.bc$mean, 'bias\ncorrected', pos=4, col='red3', cex=0.9)
 legend('topright', legend = c('model runs', 'bias corrected model runs'),
                               col = c('grey', 'pink'), pch = '-', bty = 'n'
        )
-  
-#dev.off()
-
-
-dfunc.up <- function(x,y,...){
-  require(MASS)
-  require(RColorBrewer)
-  
-  br <- brewer.pal(9, 'Blues')
-  # function for plotting 2d kernel density estimates in pairs() plot.
-  kde <- kde2d(x,y)
-  image(kde, col = br, add = TRUE)
-  
-}
+dev.off()
 
 # --------------------------------------------------------
 # Find points which are NROY for all three systems,
 # When T and P are held at observed values and not 
 # --------------------------------------------------------
 # Find the set of plausible inputs, when temperature and precip are included in the inputs
-plausible.amazon.bc <- inputs.set(X = X_tropics_norm, y = Y_tropics,thres = 3,
-                                  obs = obs_amazon,
-                                  obs.sd = 0,
-                                  disc = 0,
-                                  disc.sd = 0.01,
-                                  n = 100000,
-                                  abt = FALSE)
 
 # create a 'core' X
 n = 100000
@@ -541,6 +480,9 @@ dev.off()
 nroy.bc.ix = intersect(intersect(nroy.ix.amaz.bc,nroy.ix.seasia.bc ), nroy.ix.congo.bc)
 nroy.nobc.ix = intersect(intersect(nroy.ix.amaz,nroy.ix.seasia ), nroy.ix.congo)
 
+(length(nroy.nobc.ix)/n) *100 # 2% of space is NROY with no bias correction.
+(length(nroy.bc.ix)/n) *100 # 28% of space is NROY with bias correction.
+
 pdf(width = 7, height = 7, file = 'graphics/best_inputs_all_bc.pdf')
 pairs(X.unif[nroy.bc.ix, ], panel = dfunc.up, gap = 0, upper.panel = NULL)
 dev.off()
@@ -549,6 +491,8 @@ pdf(width = 7, height = 7, file = 'graphics/best_inputs_all_nobc.pdf')
 pairs(X.unif[nroy.nobc.ix, ], panel = dfunc.up, gap = 0, upper.panel = NULL)
 dev.off()
 
+
+# What fraction of parameter space is NROY for all three observations? 
 
 
 
