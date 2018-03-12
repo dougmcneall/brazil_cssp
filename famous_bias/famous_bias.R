@@ -495,5 +495,24 @@ dev.off()
 # What fraction of parameter space is NROY for all three observations? 
 
 
+# --------------------------------------------------------------
+# Here's a fun thing - suggested by Michael Goldstein - 
+# What value does the model add over just using T and P to
+# fit the data?
+# -------------------------------------------------------------
+
+fit.tp  = km(~., design = X_tropics_norm[, 8:9], response=Y_tropics)
+pred.tp = leaveOneOut.km(fit.tp, type="UK", trend.reestim=TRUE)
+
+plot(Y_tropics, pred.tp$mean )
+fit.tp.resid = pred.tp$mean - Y_tropics
+
+# Have to split these out per-forest
+fit.resid.amazon = km(~., design = X.norm, response=fit.tp.resid[1:100])
+fit.resid.seasia = km(~., design = X.norm, response=fit.tp.resid[101:200])
+fit.resid.congo = km(~., design = X.norm, response=fit.tp.resid[201:300])
+
+plot(fit.resid.congo)
+
 
 
