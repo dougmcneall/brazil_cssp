@@ -234,6 +234,36 @@ twoStep = function(X, y, nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, seed=NUL
   
 }
 
+twoStep.glmnet = function(X, y, nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, seed=NULL, trace=FALSE, maxit=100,
+                          REPORT=10, factr=1e7, pgtol=0.0, parinit=NULL, popsize=100){
+  # Use lasso to reduce input dimension of emulator before
+  # building.
+  control_list = list(trace=trace, maxit=maxit, REPORT=REPORT, factr=factr, pgtol=pgtol, pop.size=popsize)
+  xvars = colnames(X)
+  data = data.frame(response=y, x=X)
+  colnames(data) <- c("response", xvars)
+  nval = length(y)
+  
+  # fit a lasso by cross validation
+  library(glmnet)
+  fit.glmnet.cv = cv.glmnet(x=X,y=y)
+  
+  # The labels of the retained coefficients are here
+  # (retains intercept at index zero)
+  coef.i = (coef(fit.glmnet.cv, s = "lambda.1se"))@i
+  labs = labels(coef(fit.glmnet.cv, s = "lambda.1se"))[[1]]
+  labs = labs[-1] # remove intercept
+  glmnet.retained = labs[coef.i]
+  
+  start.form = as.formula(paste("~ ", paste(glmnet.retained , collapse= "+")))
+  m = km(start.form, design=X, response=y, nugget=nugget, parinit=parinit,
+         nugget.estim=nuggetEstim, noise.var=noiseVar, control=control_list)
+  
+  return(list(x=X, y=y, nugget=nugget, nugget.estim=nuggetEstim,
+              noise.var=noiseVar, emulator=m, seed=seed, coefs=m@covariance@range.val,
+              trends=m@trend.coef, meanTerms=all.vars(start.form), fit.glmnet.cv=fit.glmnet.cv))
+}
+
 
 
 
