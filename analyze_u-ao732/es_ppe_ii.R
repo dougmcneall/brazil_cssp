@@ -58,7 +58,7 @@ twoStep.sens = function(X, y, n=21, predtype = 'UK', nugget=NULL, nuggetEstim=FA
   X.oaat = oaat.design(X.norm, n, med = TRUE)
   colnames(X.oaat) = colnames(X)
   
-  twoStep.em = twoStep(X=X, y=y, nugget=nugget, nuggetEstim=nuggetEstim, noiseVar=noiseVar,
+  twoStep.em = twoStep.glmnet(X=X, y=y, nugget=nugget, nuggetEstim=nuggetEstim, noiseVar=noiseVar,
                        seed=seed, trace=trace, maxit=maxit,
                        REPORT=REPORT, factr=factr, pgtol=pgtol,
                        parinit=parinit, popsize=popsize)
@@ -68,7 +68,6 @@ twoStep.sens = function(X, y, n=21, predtype = 'UK', nugget=NULL, nuggetEstim=FA
   sens = sensvar(oaat.pred = oaat.pred, n=n, d=d)
   out = sens
   out
-  
 }
 
 anomalizeTSmatrix = function(x, ix){
@@ -197,38 +196,23 @@ for(i in 1:length(fnlocvec)){
 }
 dev.off()
 
-
 # ----------------------------------------------------------------------
 # Remove parts of parameter space where the model does really
 # badly at simulating runoff at the start of the run.
 # Use this to get some basic idea about how well the 
 # emulator works.
 # ----------------------------------------------------------------------
-
-runoff = (load_ts_ensemble(fnlocvec[6])/1e8)[toplevel.ix, ]
+runoff = (load_ts_ensemble("data/ES_PPE_ii/Annual.Amazon.runoff.global_sum.txt")/1e8)[toplevel.ix, ]
 runoff.ix = which(runoff[,1] > 0.8)
 
 X.runoff = X[runoff.ix, ]
 
-# ----------------------------------------------------------------------
-# How good is a GP emulator in the initially plausible space?
-# ----------------------------------------------------------------------
-runoff.1861 = runoff[runoff.ix, 1]
+# There's a relationship between runoff starting value and runoff change, but
+# not sure about the causality.
+runoff.start = runoff[runoff.ix, 1]
+runoff.change = ts.ensemble.change(runoff[runoff.ix, ], 1:10, 145:154)
 
-km.fit.runoff.1861 = km(~., design = X.runoff, response = runoff.1861)
-km.loo.runoff = leaveOneOut.km(km.fit.runoff.1861,type = 'UK', trend.reestim=TRUE)
-
-ts.fit.runoff = twoStep(X=X.runoff, y = runoff.1861)
-
-ts.loo.runoff = leaveOneOut.km(ts.fit.runoff$emulator,
-                               type = 'UK', trend.reestim=TRUE)
-
-plot(runoff.1861, km.loo.runoff$mean, col = 'grey', pch = 19)
-points(runoff.1861, ts.loo.runoff$mean, col = 'tomato2', pch = 19)
-abline(0,1)
-
-rmse(runoff.1861, km.loo.runoff$mean)
-rmse(runoff.1861, ts.loo.runoff$mean)
+plot(runoff.start, runoff.change)
 
 # Sensitivity analysis of space left over once we've removed the
 # non-performing models
@@ -288,7 +272,7 @@ for(i in 1:length(fnlocvec)){
   
   dat = load_ts_ensemble(fnlocvec[i])[toplevel.ix, ]
   dat.const = dat[runoff.ix,1]
-  em = twoStep(X = X.runoff, y = dat.const)
+  em = twoStep.glmnet(X = X.runoff, y = dat.const)
   pred = predict(em$emulator, newdata = X.oaat.runoff, type = 'UK')
   oaat.mat[, i] = pred$mean
 }
@@ -333,6 +317,60 @@ legend('top',
 
 dev.off()
 
+
+# Now do the same for the *change* in the variable 
+# over the time period
+
+for(i in 1:length(fnlocvec)){
+  
+  dat = load_ts_ensemble(fnlocvec[i])[toplevel.ix, ]
+  dat.const = dat[runoff.ix,154] - dat[runoff.ix,1] # change
+  em = twoStep.glmnet(X = X.runoff, y = dat.const)
+  pred = predict(em$emulator, newdata = X.oaat.runoff, type = 'UK')
+  oaat.mat[, i] = pred$mean
+}
+
+oaat.norm = normalize(oaat.mat)
+
+linecols.ext = c('black', paired)
+ylim = c(0,1)
+pdf(file = 'graphics/ppe_ii/runoff_constrained_amazon_change_oaat.pdf', width = 9, height = 9)
+par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
+
+for(i in 1:d){
+  
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  y.oaat = oaat.norm[,1]
+  
+  plot(X.oaat.runoff[ix,i], y.oaat[ix],
+       type = 'n',
+       ylab= '', ylim = ylim, axes = FALSE,
+       main = '',
+       xlab = '')
+  
+  for(j in 1:length(fnlocvec)){
+    
+    y.oaat = oaat.norm[ix,j]
+    lines(X.oaat.runoff[ix,i],y.oaat, col = linecols.ext[j], lwd = 2) 
+  }
+  
+  axis(1, col = 'grey', col.axis = 'grey', las = 1)
+  axis(2, col = 'grey', col.axis = 'grey', las = 1)
+  mtext(3, text = colnames(lhs)[i], line = 0.2, cex = 0.7)  
+  
+}
+
+reset()
+legend('top',
+       legend = fnams, 
+       col = linecols.ext,
+       lwd = 2,
+       horiz = TRUE)
+
+dev.off()
+
+
+
 # --------------------------------------------------------------------------------
 # Now apply constraints to the global data and apply it to the local.
 #
@@ -361,16 +399,19 @@ for(i in 1:length(fnvec)){
 }
 
 # Constrain on runoff first
-datmat = matrix(nrow = nrow(X.runoff), ncol = length(fnlocvec))
+datmat = matrix(nrow = nrow(X), ncol = length(fnlocvec))
 for(i in 1:length(fnlocvec)){
   dat = load_ts_ensemble(fnlocvec[i])[toplevel.ix, ]
-  dat.modern = dat[runoff.ix,135:154]
+  dat.modern = dat[ ,135:154]
   mean.modern = apply(dat.modern, 1, mean)
   datmat[ , i] = mean.modern
 }
 colnames(datmat) = fnams
 
-norm.vec = c(1e12, 1e12, 1e6, 1e12, 1e12, 1e9)
+
+ysec = 60*60*24*365
+
+norm.vec = c(1e12, 1e12, 1e12/ysec , 1e12, 1e12, 1e9)
 
 dat.norm = sweep(datmat, 2, norm.vec, FUN = '/')
 
@@ -380,6 +421,73 @@ for(i in 1:6){
   hist(dat.norm[,i], main = fnams[i])
 }
 
+# Constrain with global runoff
+globrunoff.ix = which(dat.norm[,'runoff'] >0.5 & dat.norm[,'nbp'] > -10)
+dat.globrunoff  = dat.norm[globrunoff.ix, ]
+X.globrunoff = X[globrunoff.ix, ]
+
+# Visualise the constrained space ...
+mins  = apply(X.globrunoff, 2, min)
+maxes = apply(X.globrunoff, 2, max)
+
+nsamp.unif = 100000
+X.unif = samp.unif(nsamp.unif, mins = mins, maxes = maxes)
+
+y.unif = matrix(nrow = nsamp.unif, ncol = ncol(dat.globrunoff))
+colnames(y.unif) = colnames(dat.globrunoff)
+
+global.emlist = vector('list',length(fnams))
+
+for(i in 1:ncol(y.unif)){
+  em = twoStep.glmnet(X = X.globrunoff, y = dat.globrunoff[,i])
+  global.emlist[[i]] = em
+  pred = predict(em$emulator, newdata = X.unif, type = 'UK')
+  y.unif[,i] = pred$mean
+}
+
+ix.kept = which(y.unif[,'cs_gb'] > 750 & y.unif[,'cs_gb'] < 3000 & y.unif[,'cv'] > 300 & y.unif[,'cv'] < 800 & y.unif[,'npp_n_gb'] > 35 & y.unif[,'npp_n_gb'] < 80)
+X.kept = X.unif[ix.kept, ]
+
+# we've removed 80% of our prior input space
+(nrow(X.kept) / nsamp.unif) * 100
+
+# Any marginal constraint? (not really)
+apply(X.kept, 2, min)
+apply(X.kept, 2, max)
+
+
+
+
+dev.new(width = 7, height = 7)
+par(mfrow = c(2,3))
+
+for(i in 1:ncol(y.unif)){
+  hist(y.unif[ix.kept,i], main = fnams[i])
+}
+
+rb = brewer.pal(9, "RdBu")
+br = rev(rb)
+
+pdf(file = 'graphics/ppe_ii/pairs_dens_all_constraints.pdf', width = 10, height = 10)
+par(oma = c(0,0,0,3))
+test = pairs(X.kept,
+             labels = 1:d,
+             gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
+             panel = dfunc.up,
+             cex.labels = 1,
+             col.axis = 'white')
+
+image.plot(legend.only = TRUE,
+           zlim = c(0,1),
+           col = rb,
+           legend.args = list(text = 'Density of model runs matching the criteria', side = 3, line = 1),
+           horizontal = TRUE
+)
+#par(xpd = NA)
+#text(0.2, 0.6, labels = paste0(colnames(lhs)[1:5],'\n'))
+legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
+
+dev.off()
 
 
 

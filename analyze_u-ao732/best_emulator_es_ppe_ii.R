@@ -70,8 +70,6 @@ runoff.change = ts.ensemble.change(runoff[runoff.ix, ], 1:10, 145:154)
 
 plot(runoff.start, runoff.change)
 
-
-
 km.fit.runoff.start = km(~., design = X.runoff, response = runoff.start, nugget.estim = TRUE)
 km.loo.runoff.start = leaveOneOut.km(km.fit.runoff.start,
                                type = 'UK', trend.reestim=TRUE)
@@ -115,7 +113,8 @@ library(doParallel)
 cl = makeCluster(nCores) 
 registerDoParallel(cl)
 # kriging model 1, with 4 starting points
-km.glmnet.fit.runoff.start = km(start.form, design=X.runoff, response=runoff.start)
+km.glmnet.fit.runoff.start = km(start.form, design=X.runoff, response=runoff.start,
+                                control = list(maxit = 300), multistart = 2)
 stopCluster(cl)
 
 km.glmnet.loo.runoff.start = leaveOneOut.km(km.glmnet.fit.runoff.start,
@@ -146,7 +145,6 @@ abline(0,1)
 
 plot(km.glmnet.loo.runoff.start$mean - m1.loo$mean)
 
-
 m0 = km(y ~., design=X.norm, response=y, nugget.estim = TRUE)
 
 # Build the first emulator with a flat prior
@@ -161,7 +159,6 @@ nd = matrix(rep(0.5, 74), nrow = 1)
 colnames(nd) = colnames(X.norm)
 
 predict(fit.glmnet.cv, s = "lambda.1se", newx = nd)
-
 
 twoStep.glmnet = function(X, y, nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, seed=NULL, trace=FALSE, maxit=100,
                    REPORT=10, factr=1e7, pgtol=0.0, parinit=NULL, popsize=100){
@@ -194,6 +191,9 @@ twoStep.glmnet = function(X, y, nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, s
 }
 
 test = twoStep.glmnet(X = X.runoff, y = runoff.start)
+
+
+
 
 test.sw = twoStep(X = X.runoff, y = runoff.start)
 
