@@ -324,8 +324,8 @@ dev.off()
 for(i in 1:length(fnlocvec)){
   
   dat = load_ts_ensemble(fnlocvec[i])[toplevel.ix, ]
-  dat.const = dat[runoff.ix,154] - dat[runoff.ix,1] # change
-  em = twoStep.glmnet(X = X.runoff, y = dat.const)
+  dat.change = ts.ensemble.change(dat, 1:10, 145:154)[runoff.ix]
+  em = twoStep.glmnet(X = X.runoff, y = dat.change)
   pred = predict(em$emulator, newdata = X.oaat.runoff, type = 'UK')
   oaat.mat[, i] = pred$mean
 }
@@ -368,6 +368,52 @@ legend('top',
        horiz = TRUE)
 
 dev.off()
+
+# Need sensitivity and ordered sensitivity of runoff change
+# Sensitivity analysis of space left over once we've removed the
+# non-performing models
+runoffchange.sensmat = matrix(NA, ncol=d, nrow=length(fnlocvec))
+colnames(runoffchange.sensmat) = colnames(lhs)
+
+# Run over all outputs
+for(i in 1:length(fnlocvec)){
+  
+  dat = load_ts_ensemble(fnlocvec[i])[toplevel.ix, ]
+  dat.change = ts.ensemble.change(dat, 1:10, 145:154)[runoff.ix]
+  ts.sens = twoStep.sens(X=X.runoff, y = dat.change)
+  sens.norm = ts.sens/max(ts.sens)
+  runoffchange.sensmat[i, ] = sens.norm
+}
+
+abssum.runoffchange.sensmat = apply(abs(runoffchange.sensmat), 2, sum)
+
+# Sensitivity matrix of runoff-constrained inputs
+pdf(file = 'graphics/ppe_ii/sensitivity_matrix_runoff_change_constrained.pdf', width = 9, height = 9)
+par(mfrow = c(2,1), mar = c(8,7,3,2))
+image(t(runoffchange.sensmat), col = blues, axes = FALSE)
+axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
+axis(2, at = seq(from =0, to = 1, by = 1/(length(fnams)-1) ),
+     labels = fnams, las = 1)
+
+par(mar = c(8,7,0,2))
+plot(1:d, abssum.runoffchange.sensmat, axes = FALSE, xlab = '', ylab = 'Sum abs. sensitivity', pch = 19)
+segments(x0 = 1:d, y0 = rep(0,d), x1 = 1:d, y1 = abssum.runoffchange.sensmat)
+axis(1,labels = colnames(lhs), at = 1:d, las=3, cex.axis = 0.8 )
+axis(2, las = 1) 
+dev.off()
+
+runoffchange.sort = sort(abssum.runoffchange.sensmat, decreasing = TRUE, index.return = TRUE)
+
+# Sorted summary sensitivity of runoff to inputs
+pdf(file = 'graphics/ppe_ii/ordered_oaat_SA_runoff_change_constrained.pdf', width = 7, height = 5)
+par(mar = c(8,4,3,1))
+plot(1:d, runoffchange.sort$x, axes = FALSE, pch = 19,
+     xlab = '', ylab = 'OAAT Sensitivity Index')
+segments(x0 = 1:d, y0 = rep(0,d), x1 = 1:d, y1 = runoffchange.sort$x)
+axis(1, at = 1:d,  labels = names(runoffchange.sort$x), las = 3, cex.axis = 0.8)
+axis(2,las =1)
+dev.off()
+
 
 
 

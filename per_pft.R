@@ -10,9 +10,13 @@ library(fields)
 library(MASS)
 library(DiceKriging)
 
-source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtools.R")
-source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/imptools.R")
-source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/vistools.R")
+source("/Users/dougmcneall/Documents/work/R/packages-git/emtools.R")
+source("/Users/dougmcneall/Documents/work/R/packages-git/imptools.R")
+source("/Users/dougmcneall/Documents/work/R/packages-git/vistools.R")
+
+#source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtools.R")
+#source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/imptools.R")
+#source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/vistools.R")
 
 yg = brewer.pal(9, "YlGn")
 ryb = brewer.pal(11, "RdYlBu")

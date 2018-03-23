@@ -70,7 +70,9 @@ runoff.change = ts.ensemble.change(runoff[runoff.ix, ], 1:10, 145:154)
 
 plot(runoff.start, runoff.change)
 
-km.fit.runoff.start = km(~., design = X.runoff, response = runoff.start, nugget.estim = TRUE)
+km.fit.runoff.start = km(~., design = X.runoff, 
+                         response = runoff.start, nugget.estim = TRUE)
+
 km.loo.runoff.start = leaveOneOut.km(km.fit.runoff.start,
                                type = 'UK', trend.reestim=TRUE)
 
@@ -190,9 +192,17 @@ twoStep.glmnet = function(X, y, nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, s
               trends=m@trend.coef, meanTerms=all.vars(start.form), fit.glmnet.cv=fit.glmnet.cv))
 }
 
-test = twoStep.glmnet(X = X.runoff, y = runoff.start)
+test = twoStep.glmnet(X = X.runoff, y = runoff.change)
 
+ts.loo.runoff.change = leaveOneOut.km(test$emulator,
+                                      type = 'UK', trend.reestim=TRUE)
 
+plot(runoff.change, km.loo.runoff.change$mean, col = 'grey', pch = 19)
+points(runoff.change, ts.loo.runoff.change$mean, col = 'tomato', pch = 19)
+abline(0,1)
+
+rmse(runoff.change, km.loo.runoff.change$mean)
+rmse(runoff.change, ts.loo.runoff.change$mean)
 
 
 test.sw = twoStep(X = X.runoff, y = runoff.start)
