@@ -41,6 +41,20 @@ lhs_ii = read.table('data/ES_PPE_ii/lhs_u-ao732a.txt', header = TRUE)
 # Validation of the analysis later on.
 toplevel.ix = 1:400
 
+# load up broadleaf forest
+# Ensemble members P0000 to P0498, with the standard run in the 
+# final row.
+Amazon.area = 7.013467e+12 # m^2
+frac_bl = read.table("data/ES_PPE_ii/Amazon_forest_total.txt")[toplevel.ix, -1] / Amazon.area
+matplot(t(frac_bl), type = 'l', col = 'black', lty = 'solid')
+
+frac_bl_change = anomalizeTSmatrix(frac_bl, ix = 1:10)
+matplot(t(frac_bl_change), type = 'l', col = 'black', lty = 'solid')
+abline(h = 0, col = 'white')
+
+nc.precip <- nc_open("data/ES_PPE_ii/JULES-ES.0p92.vn5.0.CRUNCEPv7.P0199.Annual.Amazon.precip.global_sum.nc")
+precip <- ncvar_get(nc.precip)
+
 lhs = rbind(lhs_i, lhs_ii)[toplevel.ix, ]
 X = normalize(lhs)
 colnames(X) = colnames(lhs)
@@ -58,7 +72,26 @@ for(i in 1:length(fnvec)){
   fnams[i] = substr(fnvec[i], attr(fs[[1]], 'match.length')+2, fe[[i]][1]-2)
 }
 
+runoff.raw = (load_ts_ensemble("data/ES_PPE_ii/Annual.Amazon.runoff.global_sum.txt"))[toplevel.ix, ]
+runoff.norm = sweep(runoff.raw, 2, STATS = precip, FUN = '/')
+runoff.norm.anom = anomalizeTSmatrix(runoff.norm, ix = 1:10)
+
+pdf('graphics/ppe_ii/runoff_normalised.pdf', width =7, height = 7 )
+par(mfrow = c(2,1), mar = c(4,4,2,1))
+matplot(t(runoff.norm), type = 'l', col = linecols, main = 'normalised runoff')
+matplot(t(runoff.norm.anom), type = 'l', col = linecols, main = 'normalised runoff anomaly')
+dev.off()
+
+
 runoff = (load_ts_ensemble("data/ES_PPE_ii/Annual.Amazon.runoff.global_sum.txt")/1e8)[toplevel.ix, ]
+runoff.anom = anomalizeTSmatrix(runoff, ix = 1:10)
+
+pdf('graphics/ppe_ii/runoff.pdf', width =7, height = 7 )
+par(mfrow = c(2,1), mar = c(4,4,2,1))
+matplot(t(runoff), type = 'l', col = linecols, main = 'runoff')
+matplot(t(runoff.anom), type = 'l', col = linecols, main = 'runoff anomaly')
+dev.off()
+
 runoff.ix = which(runoff[,1] > 0.8)
 
 X.runoff = X[runoff.ix, ]
@@ -67,6 +100,7 @@ X.runoff = X[runoff.ix, ]
 # not sure about the causality.
 runoff.start = runoff[runoff.ix, 1]
 runoff.change = ts.ensemble.change(runoff[runoff.ix, ], 1:10, 145:154)
+
 
 plot(runoff.start, runoff.change)
 
