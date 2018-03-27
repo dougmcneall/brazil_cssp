@@ -7,6 +7,7 @@
 # 0. Load functions
 # -------------------------------------------------------------------
 source('../per_pft.R')
+library(ncdf4)
 
 load_ts_ensemble = function(fn, na.strings='-9.990000000000000000e+02', skip=1){
   dat = read.table(fn, header = FALSE, skip = skip, na.strings=na.strings)

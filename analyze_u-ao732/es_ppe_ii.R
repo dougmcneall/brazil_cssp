@@ -88,16 +88,65 @@ ts.ensemble.change = function(x, startix, endix){
   out
 }
 
+ensCompTShist <- function(dat1,dat2,grid = TRUE,colvec,legvec,mainvec,...){
+  # Plot comparison ensemble time series
+  # add a histogram on the end
+  
+  
+  #source('/home/h01/hadda/code/R/useful/dougplotpars.R')  
+  #par(dougpar_web)
+  par(mar = c(5,5,4,0), mgp = c(3.5,1,0))
+  
+  
+  nf <- layout(matrix(c(1,2,3),1,3,byrow=TRUE),widths = c(10,1,1), TRUE)
+  #layout.show(nf)
+  matplot(colnames(dat1), t(dat1), type = 'l',
+          lty = 1,
+          col = colvec[1],
+          ...
+  )
+  
+  matlines(colnames(dat2), t(dat2), type = 'l',
+           lty = 1,
+           col = colvec[2]
+  )
+  
+  
+  if(grid) {grid(lty ='dashed',col = 'grey')}
+  
+  mtext(side = 3, line = 1, adj = 0, mainvec, cex = 2, col = 'black')
+  
+  legend('topleft', legvec,
+         fill = colvec,
+         text.col = colvec,
+         bg = 'white',
+         border = par()$fg,
+         cex = 1.5
+  )
+  
+  
+  # Add the histograms
+  datran <- range(dat1,dat2, na.rm = TRUE)
+  
+  breaks <- seq(from = datran[1], to = datran[2], length = 15)
+  
+  dat1Hist <- hist( dat1[,ncol(dat1)],breaks = breaks, plot = FALSE)
+  dat2Hist <- hist( dat2[,ncol(dat2)],breaks = breaks,  plot = FALSE)
+  
+  xlim = c(0, max(dat1Hist$counts, dat2Hist$counts))
+  par(mar = c(5,0,4,1), fg = 'white')
+  barplot(dat1Hist$counts, horiz = TRUE, col = colvec[1], space = 0, axes = FALSE, xlim = xlim)
+  barplot(dat2Hist$counts, horiz = TRUE, col = colvec[2], space = 0, axes = FALSE, xlim = xlim)
+  
+}
+
 years = 1861:2014
+ysec = 60*60*24*365
+norm.vec = c(1e12, 1e12, 1e12/ysec , 1e12, 1e12, 1e9)
 
 # Load up the data
 lhs_i = read.table('data/ES_PPE_i/lhs_u-ao732.txt', header = TRUE)
 lhs_ii = read.table('data/ES_PPE_ii/lhs_u-ao732a.txt', header = TRUE)
-
-# For some reason, the last ensemble member didn't run
-# We need to do some pretty careful checking that
-# We've lined up the ensemble members correctly with the
-# inputs.
 
 # Exclude the last 100 members of the ensemble for
 # Validation of the analysis later on.
@@ -113,43 +162,84 @@ X = normalize(lhs)
 colnames(X) = colnames(lhs)
 d = ncol(X)
 
-# This first section checks the old data against the new.
+# load Amazon broadleaf forest fraction
+# Ensemble members P0000 to P0498, with the standard run in the 
+# final row.
+Amazon.area = 7.013467e+12 # m^2
+frac_bl = read.table("data/ES_PPE_ii/Amazon_forest_total.txt")[toplevel.ix, -1] / Amazon.area
+frac_bl_anom = anomalizeTSmatrix(frac_bl, ix = 1:10)
+frac_bl_change = ts.ensemble.change(frac_bl, startix = 1:30, endix = 125:154)
 
-fnvec = dir('data/', pattern = 'Annual.Amazon')
-fnlocvec = paste0('data/', fnvec)
+# Histogram of modern forest fraction
+par(mfrow = c(2,1))
+hist(apply(frac_bl[, 125:154], 1, FUN = 'mean'))
+hist(frac_bl_change)
 
-dat_i = load_ts_ensemble(fnlocvec[2])
-n_i = nrow(dat_i)
+# load Amazon precipitation
+nc.precip <- nc_open("data/ES_PPE_ii/JULES-ES.0p92.vn5.0.CRUNCEPv7.P0199.Annual.Amazon.precip.global_sum.nc")
+precip <- ncvar_get(nc.precip)
 
-fnvec = dir('data/ES_PPE_ii', pattern = 'Annual.Amazon')
+# Plot forest fraction
+pdf('graphics/ppe_ii/forest_fraction.pdf', width = 5, height = 7)
+par(mfrow = c(2,1), mar = c(5,5,3,1), las = 1)
+matplot(years,t(frac_bl), type = 'l', 
+        col = linecols, lty = 'solid',
+        ylim = c(0,1),
+        ylab ='fraction', xlab = '',
+        axes = FALSE
+        )
+axis(1, at = seq(from = 1860, to = 2020, by = 30))
+axis(2)
+mtext(side = 3, adj = 0, line = 0.5, text = 'Broadleaf Forest Fraction')
+
+matplot(years,t(frac_bl_anom), type = 'l', 
+        col = linecols, lty = 'solid',
+        axes = FALSE,
+        main = '',
+        xlab = '', ylab = 'fraction'
+)
+mtext(side = 3, adj = 0, line = 0.5, text = 'Broadleaf Forest Fraction Change')
+abline(h=0, col = 'white')
+axis(1, at = seq(from = 1860, to = 2020, by = 30))
+axis(2)
+dev.off()
+
+# Plot normalised runoff
+runoff.raw = (load_ts_ensemble("data/ES_PPE_ii/Annual.Amazon.runoff.global_sum.txt"))[toplevel.ix, ]
+runoff.norm = sweep(runoff.raw, 2, STATS = precip, FUN = '/')
+runoff.norm.anom = anomalizeTSmatrix(runoff.norm, ix = 1:10)
+
+
+pdf('graphics/ppe_ii/runoff_normalised.pdf', width = 5, height = 7 )
+par(mfrow = c(2,1), mar = c(5,5,3,1), las = 1)
+matplot(years, t(runoff.norm), type = 'l', lty = 'solid',
+        col = linecols,
+        main = '',
+        ylab = 'fraction of precipitation',
+        axes = FALSE)
+mtext(side = 3, adj = 0, line = 0.5, text = 'Normalised Runoff')
+axis(1, at = seq(from = 1860, to = 2020, by = 30))
+axis(2)
+matplot(years, t(runoff.norm.anom), type = 'l', lty = 'solid',
+        col = linecols, 
+        main = '',
+        ylab = 'fraction of precipitation',
+        axes = FALSE)
+mtext(side = 3, adj = 0, line = 0.5, text = 'Normalised Runoff Change')
+axis(1, at = seq(from = 1860, to = 2020, by = 30))
+axis(2)
+dev.off()
+
+#fnvec = dir('data/ES_PPE_ii', pattern = 'Annual.Amazon')
+fnvec = c("Annual.Amazon.cs_gb.global_sum.txt",
+          "Annual.Amazon.cv.global_sum.txt",
+          "Annual.Amazon.gpp_gb.global_sum.txt",
+          "Annual.Amazon.nbp.global_sum.txt",
+          "Annual.Amazon.npp_n_gb.global_sum.txt",
+          "Annual.Amazon.runoff.global_sum.txt"
+          )
+
 fnlocvec = paste0('data/ES_PPE_ii/', fnvec)
-
-dat_ii = load_ts_ensemble(fnlocvec[2])
-
-plot(dat_i[, 154], dat_ii[1:n_i, 154])
-abline(0,1)
-
-# What's the difference between the runoff in the Amazon
-# Without a CO2 increase vs with a CO2 increase?
-matplot(years, t(dat_i[1:10,]), type = 'l', col = 'black', lty = 'solid', 
-        lwd = 0.5)
-matlines(years, t(dat_ii[1:10,]), type = 'l', col = 'tomato2', lty = 'solid', 
-        lwd = 0.5)
-
-
-
-runoff.diff = dat_ii[1:n_i, ] - dat_i
-
-matplot(years, t(runoff.diff), type = 'l', col = linecols, lty = 'solid', 
-        lwd = 0.5, ylim = c(-0.5e8, 0.5e8))
-
-plot(dat_i[, 1], dat_ii[1:n_i, 1])
-
-hist(dat_ii[1:n_i, 154]-dat_ii[1:n_i, 1])
-hist(dat_i[1:n_i, 154]-dat_i[1:n_i, 1])
-
-
-##
 
 # Extract the bit of the filename that describes the data
 fs = lapply(fnvec,regexpr, pattern = 'Annual.Amazon')
@@ -160,9 +250,17 @@ for(i in 1:length(fnvec)){
   fnams[i] = substr(fnvec[i], attr(fs[[1]], 'match.length')+2, fe[[i]][1]-2)
 }
 
+nams = c(
+  "Soil Carbon",
+  "Vegetation Carbon",
+  "Gross Primary Production",
+  "Net Biospheric Production",
+  "Net Primary Production",
+  "Runoff"
+)
+
 greys = brewer.pal(9, "Greys")
 blues = brewer.pal(9, "Blues")
-
 
 pdf(width = 10, height = 10, file = 'test.pdf')
 par(mfrow =c(6,6), mar = c(2,2,2,2))
@@ -173,25 +271,38 @@ for(i in 1:d){
 }
 dev.off()
 
-
+ylabs = c(
+  'GtC',
+  'GtC',
+  'GtC/year',
+  'GtC/year',
+  'GtC/year',
+  'Sv'
+)
 # Plot the timeseries
-pdf(width = 7, height = 12, file = 'graphics/ppe_ii/tsplot.pdf')
-par(mfrow = c(6, 2), mar = c(2,2,2,2))
+pdf(width = 7, height = 12, file = 'graphics/ppe_ii/tsplot.pdf_Amazon')
+par(mfrow = c(6, 2), mar = c(5,4,2,2))
 for(i in 1:length(fnlocvec)){
   
-  dat = load_ts_ensemble(fnlocvec[i])
+  dat = load_ts_ensemble(fnlocvec[i])/norm.vec[i]
   dat.anom = anomalizeTSmatrix(dat, 1:30)
   
   matplot(years, t(dat), type = 'l', col = linecols, lty = 'solid', 
           lwd = 0.5, axes = FALSE,
-          main = fnams[i])
-  axis(1, col = 'grey')
-  axis(2, col = 'grey')
+          main = '',
+          ylab = ylabs[i],
+          xlab = '')
+  axis(1, at = seq(from = 1860, to = 2020, by = 30))
+  axis(2)
+  mtext(side = 3, adj = 0, line = 0.5, text = nams[i])
+  
   
   matplot(years, t(dat.anom), type = 'l', col = linecols,
-          lty = 'solid',lwd = 0.5, axes = FALSE)
-  axis(1, col = 'grey')
-  axis(2, col = 'grey')
+          lty = 'solid',lwd = 0.5, axes = FALSE,
+          ylab = ylabs[i],
+          xlab = '')
+  axis(1, at = seq(from = 1860, to = 2020, by = 30))
+  axis(2)
   
 }
 dev.off()
@@ -427,6 +538,13 @@ dev.off()
 # cVeg 300 - 800 GtC
 # cSoil 750 - 3000 GtC
 # --------------------------------------------------------------------------------
+#fnvec = c("Annual.cs_gb.global_sum.txt",
+#          "Annual.cv.global_sum.txt",
+#          "Annual.gpp_gb.global_sum.txt",
+#          "Annual.nbp.global_sum.txt",
+#          "Annual.npp_n_gb.global_sum.txt",
+#          "Annual.runoff.global_sum.txt")
+
 fnallvec = dir('data/ES_PPE_ii/', pattern = 'Annual')
 # WARNING - hard coded hack to sort
 fidx = grep("Annual.(?!Amazon).*", fnallvec, perl=TRUE)
@@ -454,10 +572,6 @@ for(i in 1:length(fnlocvec)){
 }
 colnames(datmat) = fnams
 
-
-ysec = 60*60*24*365
-
-norm.vec = c(1e12, 1e12, 1e12/ysec , 1e12, 1e12, 1e9)
 
 dat.norm = sweep(datmat, 2, norm.vec, FUN = '/')
 
@@ -502,6 +616,17 @@ apply(X.kept, 2, min)
 apply(X.kept, 2, max)
 
 
+bl_frac_modern = frac_bl[globrunoff.ix, 154]
+
+em = twoStep.glmnet(X = X.globrunoff, y = bl_frac_modern)
+pred = predict(em$emulator, newdata = X.unif, type = 'UK')
+
+ix.kept2 = which(y.unif[,'cs_gb'] > 750 & y.unif[,'cs_gb'] < 3000 & 
+                  y.unif[,'cv'] > 300 & y.unif[,'cv'] < 800 &
+                  y.unif[,'npp_n_gb'] > 35 & y.unif[,'npp_n_gb'] < 80 &
+                  pred$mean > 0.3
+                  )
+X.kept2 = X.unif[ix.kept2, ]
 
 
 dev.new(width = 7, height = 7)
@@ -514,9 +639,9 @@ for(i in 1:ncol(y.unif)){
 rb = brewer.pal(9, "RdBu")
 br = rev(rb)
 
-pdf(file = 'graphics/ppe_ii/pairs_dens_all_constraints.pdf', width = 10, height = 10)
+pdf(file = 'graphics/ppe_ii/pairs_dens_all_constraints2.pdf', width = 10, height = 10)
 par(oma = c(0,0,0,3))
-test = pairs(X.kept,
+test = pairs(X.kept2,
              labels = 1:d,
              gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
              panel = dfunc.up,
