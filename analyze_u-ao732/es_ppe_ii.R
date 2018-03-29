@@ -88,56 +88,45 @@ ts.ensemble.change = function(x, startix, endix){
   out
 }
 
-ensCompTShist <- function(dat1,dat2,grid = TRUE,colvec,legvec,mainvec,...){
+ensTShist <- function(x, dat,grid = TRUE,colvec,histcol, mainvec,...){
   # Plot comparison ensemble time series
   # add a histogram on the end
-  
-  
   #source('/home/h01/hadda/code/R/useful/dougplotpars.R')  
   #par(dougpar_web)
   par(mar = c(5,5,4,0), mgp = c(3.5,1,0))
-  
-  
-  nf <- layout(matrix(c(1,2,3),1,3,byrow=TRUE),widths = c(10,1,1), TRUE)
-  #layout.show(nf)
-  matplot(colnames(dat1), t(dat1), type = 'l',
+  nf <- layout(matrix(c(1,2),1,2,byrow=TRUE),widths = c(10,2), TRUE)
+
+  matplot(x, t(dat), type = 'l',
           lty = 1,
-          col = colvec[1],
+          col = colvec,
+          axes = FALSE,
           ...
   )
-  
-  matlines(colnames(dat2), t(dat2), type = 'l',
-           lty = 1,
-           col = colvec[2]
-  )
-  
-  
+  axis(1)
+  axis(2)
+  # matlines(colnames(dat2), t(dat2), type = 'l',
+#           lty = 1,
+#           col = colvec[2]
+#  )
   if(grid) {grid(lty ='dashed',col = 'grey')}
-  
-  mtext(side = 3, line = 1, adj = 0, mainvec, cex = 2, col = 'black')
-  
-  legend('topleft', legvec,
-         fill = colvec,
-         text.col = colvec,
-         bg = 'white',
-         border = par()$fg,
-         cex = 1.5
-  )
-  
-  
+  mtext(side = 3, line = 1, adj = 0, mainvec, cex = 1.5, col = 'black')
+#  legend('topleft', legvec,
+#         fill = colvec,
+#         text.col = colvec,
+#         bg = 'white',
+#         border = par()$fg,
+#         cex = 1.5
+#  )
   # Add the histograms
-  datran <- range(dat1,dat2, na.rm = TRUE)
+  datran <- range(dat, na.rm = TRUE)
+  breaks <- seq(from = datran[1], to = datran[2], length = 20)
+  datHist <- hist( dat[,ncol(dat)],breaks = breaks, plot = FALSE)
+  #dat2Hist <- hist( dat2[,ncol(dat2)],breaks = breaks,  plot = FALSE)
   
-  breaks <- seq(from = datran[1], to = datran[2], length = 15)
-  
-  dat1Hist <- hist( dat1[,ncol(dat1)],breaks = breaks, plot = FALSE)
-  dat2Hist <- hist( dat2[,ncol(dat2)],breaks = breaks,  plot = FALSE)
-  
-  xlim = c(0, max(dat1Hist$counts, dat2Hist$counts))
+  xlim = c(0, max(datHist$counts, na.rm = TRUE))
   par(mar = c(5,0,4,1), fg = 'white')
-  barplot(dat1Hist$counts, horiz = TRUE, col = colvec[1], space = 0, axes = FALSE, xlim = xlim)
-  barplot(dat2Hist$counts, horiz = TRUE, col = colvec[2], space = 0, axes = FALSE, xlim = xlim)
-  
+  barplot(datHist$counts, horiz = TRUE, col = histcol, space = 0, axes = FALSE, xlim = xlim)
+  #barplot(dat2Hist$counts, horiz = TRUE, col = colvec[2], space = 0, axes = FALSE, xlim = xlim)
 }
 
 years = 1861:2014
@@ -181,53 +170,54 @@ precip <- ncvar_get(nc.precip)
 
 # Plot forest fraction
 pdf('graphics/ppe_ii/forest_fraction.pdf', width = 5, height = 7)
-par(mfrow = c(2,1), mar = c(5,5,3,1), las = 1)
-matplot(years,t(frac_bl), type = 'l', 
-        col = linecols, lty = 'solid',
-        ylim = c(0,1),
-        ylab ='fraction', xlab = '',
-        axes = FALSE
-        )
-axis(1, at = seq(from = 1860, to = 2020, by = 30))
-axis(2)
-mtext(side = 3, adj = 0, line = 0.5, text = 'Broadleaf Forest Fraction')
+par(las = 1)
+ensTShist(years, frac_bl, 
+          colvec = linecols[c(1,3,4)], 
+          histcol = linecols[3],
+          ylab = 'fraction', xlab = '',
+          grid = FALSE, 
+          mainvec = 'Amazon BL Forest Fraction')
+dev.off()
 
-matplot(years,t(frac_bl_anom), type = 'l', 
-        col = linecols, lty = 'solid',
-        axes = FALSE,
-        main = '',
-        xlab = '', ylab = 'fraction'
-)
-mtext(side = 3, adj = 0, line = 0.5, text = 'Broadleaf Forest Fraction Change')
-abline(h=0, col = 'white')
-axis(1, at = seq(from = 1860, to = 2020, by = 30))
-axis(2)
+
+# Plot forest fraction anomaly
+pdf('graphics/ppe_ii/forest_fraction_anomaly.pdf', width = 5, height = 7)
+par(las = 1)
+ensTShist(years, frac_bl_anom, 
+          colvec = linecols[c(1,3,4)], 
+          histcol = linecols[3],
+          ylab = 'fraction', xlab = '',
+          grid = FALSE, 
+          mainvec = 'Amazon BL Forest Fraction Anomaly')
 dev.off()
 
 # Plot normalised runoff
 runoff.raw = (load_ts_ensemble("data/ES_PPE_ii/Annual.Amazon.runoff.global_sum.txt"))[toplevel.ix, ]
 runoff.norm = sweep(runoff.raw, 2, STATS = precip, FUN = '/')
 runoff.norm.anom = anomalizeTSmatrix(runoff.norm, ix = 1:10)
+runoff.norm.change = ts.ensemble.change(runoff.norm, startix = 1:30, endix = 125:154)
 
 
-pdf('graphics/ppe_ii/runoff_normalised.pdf', width = 5, height = 7 )
-par(mfrow = c(2,1), mar = c(5,5,3,1), las = 1)
-matplot(years, t(runoff.norm), type = 'l', lty = 'solid',
-        col = linecols,
-        main = '',
-        ylab = 'fraction of precipitation',
-        axes = FALSE)
-mtext(side = 3, adj = 0, line = 0.5, text = 'Normalised Runoff')
-axis(1, at = seq(from = 1860, to = 2020, by = 30))
-axis(2)
-matplot(years, t(runoff.norm.anom), type = 'l', lty = 'solid',
-        col = linecols, 
-        main = '',
-        ylab = 'fraction of precipitation',
-        axes = FALSE)
-mtext(side = 3, adj = 0, line = 0.5, text = 'Normalised Runoff Change')
-axis(1, at = seq(from = 1860, to = 2020, by = 30))
-axis(2)
+pdf('graphics/ppe_ii/runoff_normalised.pdf', width = 8, height = 5 )
+par(las = 1)
+ensTShist(years, runoff.norm, 
+          colvec = linecols[c(1,3,4)], 
+          histcol = linecols[3],
+          ylab = 'fraction of precipitation', xlab = '',
+          grid = FALSE, 
+          mainvec = 'Amazon Normalized Runoff')
+
+dev.off()
+
+pdf('graphics/ppe_ii/runoff_normalised_anomaly.pdf', width = 8, height = 5 )
+par(las = 1)
+ensTShist(years, runoff.norm.anom, 
+          colvec = linecols[c(1,3,4)], 
+          histcol = linecols[3],
+          ylab = 'fraction of precipitation', xlab = '',
+          grid = FALSE, 
+          mainvec = 'Amazon Normalized Runoff Anomaly')
+
 dev.off()
 
 #fnvec = dir('data/ES_PPE_ii', pattern = 'Annual.Amazon')
@@ -262,15 +252,6 @@ nams = c(
 greys = brewer.pal(9, "Greys")
 blues = brewer.pal(9, "Blues")
 
-pdf(width = 10, height = 10, file = 'test.pdf')
-par(mfrow =c(6,6), mar = c(2,2,2,2))
-for(i in 1:d){
-  
-  plot(lhs[100:300,i],dat[100:300,1], pch = '.', axes = FALSE)
-  
-}
-dev.off()
-
 ylabs = c(
   'GtC',
   'GtC',
@@ -280,14 +261,14 @@ ylabs = c(
   'Sv'
 )
 # Plot the timeseries
-pdf(width = 7, height = 12, file = 'graphics/ppe_ii/tsplot.pdf_Amazon')
-par(mfrow = c(6, 2), mar = c(5,4,2,2))
+pdf(width = 7, height = 12, file = 'graphics/ppe_ii/tsplot_Amazon.pdf')
+par(mfrow = c(6, 2), mar = c(5,4,2,2), las = 1)
 for(i in 1:length(fnlocvec)){
   
   dat = load_ts_ensemble(fnlocvec[i])/norm.vec[i]
   dat.anom = anomalizeTSmatrix(dat, 1:30)
   
-  matplot(years, t(dat), type = 'l', col = linecols, lty = 'solid', 
+  matplot(years, t(dat), type = 'l', col = linecols[c(1,3,4)], lty = 'solid', 
           lwd = 0.5, axes = FALSE,
           main = '',
           ylab = ylabs[i],
@@ -297,7 +278,7 @@ for(i in 1:length(fnlocvec)){
   mtext(side = 3, adj = 0, line = 0.5, text = nams[i])
   
   
-  matplot(years, t(dat.anom), type = 'l', col = linecols,
+  matplot(years, t(dat.anom), type = 'l', col = linecols[c(1,3,4)],
           lty = 'solid',lwd = 0.5, axes = FALSE,
           ylab = ylabs[i],
           xlab = '')
@@ -322,21 +303,32 @@ X.runoff = X[runoff.ix, ]
 # not sure about the causality.
 runoff.start = runoff[runoff.ix, 1]
 runoff.change = ts.ensemble.change(runoff[runoff.ix, ], 1:10, 145:154)
-
 plot(runoff.start, runoff.change)
+
+
+
+# datmat contains the starting values of the timeseries
+nruns = length(toplevel.ix) # number of runs
+ndat = 8 # number of data streams 
 
 # Sensitivity analysis of space left over once we've removed the
 # non-performing models
-runoffconst.sensmat = matrix(NA, ncol=d, nrow=length(fnlocvec))
+runoffconst.sensmat = matrix(NA, ncol=d, nrow=ndat)
 colnames(runoffconst.sensmat) = colnames(lhs)
 
-# Run over all outputs
+datmat = matrix(NA, nrow = nruns, ncol =  ndat)
+datnames = c(fnams,'n_runoff', 'frac_bl')
+colnames(datmat) = datnames
+
 for(i in 1:length(fnlocvec)){
-  
-  dat = load_ts_ensemble(fnlocvec[i])[toplevel.ix, ]
-  dat.start = dat[,1]
-  dat.const = dat.start[runoff.ix]
-  
+  datmat[,i] = load_ts_ensemble(fnlocvec[i])[toplevel.ix, 1]
+}
+datmat[,7 ] = runoff.norm[, 1]
+datmat[, 8] = frac_bl[,1]
+
+# Run over all outputs. Constrain to the "runoff approved" input space
+for(i in 1:ncol(datmat)){
+  dat.const = datmat[runoff.ix, i]
   ts.sens = twoStep.sens(X=X.runoff, y = dat.const)
   sens.norm = ts.sens/max(ts.sens)
   runoffconst.sensmat[i, ] = sens.norm
@@ -349,8 +341,8 @@ pdf(file = 'graphics/ppe_ii/sensitivity_matrix_runoff_constrained.pdf', width = 
 par(mfrow = c(2,1), mar = c(8,7,3,2))
 image(t(runoffconst.sensmat), col = blues, axes = FALSE)
 axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
-axis(2, at = seq(from =0, to = 1, by = 1/(length(fnams)-1) ),
-     labels = fnams, las = 1)
+axis(2, at = seq(from =0, to = 1, by = 1/(ndat-1) ),
+     labels = datnames, las = 1)
 
 par(mar = c(8,7,0,2))
 plot(1:d, abssum.runoffconst.sensmat, axes = FALSE, xlab = '', ylab = 'Sum abs. sensitivity', pch = 19)
@@ -377,12 +369,10 @@ n = 21
 X.oaat.runoff = oaat.design(X.runoff, n = n)
 colnames(X.oaat.runoff) = colnames(lhs)
 
-oaat.mat = matrix(NA, ncol = length(fnlocvec), nrow = nrow(X.oaat.runoff)) 
+oaat.mat = matrix(NA, ncol = ndat, nrow = nrow(X.oaat.runoff)) 
 
-for(i in 1:length(fnlocvec)){
-  
-  dat = load_ts_ensemble(fnlocvec[i])[toplevel.ix, ]
-  dat.const = dat[runoff.ix,1]
+for(i in 1:ndat){
+  dat.const = datmat[runoff.ix,i]
   em = twoStep.glmnet(X = X.runoff, y = dat.const)
   pred = predict(em$emulator, newdata = X.oaat.runoff, type = 'UK')
   oaat.mat[, i] = pred$mean
@@ -407,7 +397,7 @@ for(i in 1:d){
        main = '',
        xlab = '')
   
-  for(j in 1:length(fnlocvec)){
+  for(j in 1:ndat){
     
     y.oaat = oaat.norm[ix,j]
     lines(X.oaat.runoff[ix,i],y.oaat, col = linecols.ext[j], lwd = 2) 
@@ -421,21 +411,31 @@ for(i in 1:d){
 
 reset()
 legend('top',
-       legend = fnams, 
+       legend = datnames, 
        col = linecols.ext,
        lwd = 2,
-       horiz = TRUE)
+       horiz = TRUE,
+       cex = 0.8)
 
 dev.off()
 
 
 # Now do the same for the *change* in the variable 
 # over the time period
+datchangemat = matrix(NA, nrow = nruns, ncol =  ndat)
+colnames(datchangemat) = datnames
 
 for(i in 1:length(fnlocvec)){
-  
   dat = load_ts_ensemble(fnlocvec[i])[toplevel.ix, ]
-  dat.change = ts.ensemble.change(dat, 1:10, 145:154)[runoff.ix]
+  dat.change = ts.ensemble.change(dat, 1:10, 145:154)
+  datchangemat[,i] = dat.change
+}
+
+datchangemat[,7 ] = runoff.norm.change
+datchangemat[, 8] = frac_bl_change
+
+for(i in 1:ndat){
+  dat.change = datchangemat[runoff.ix, i]
   em = twoStep.glmnet(X = X.runoff, y = dat.change)
   pred = predict(em$emulator, newdata = X.oaat.runoff, type = 'UK')
   oaat.mat[, i] = pred$mean
@@ -449,7 +449,6 @@ pdf(file = 'graphics/ppe_ii/runoff_constrained_amazon_change_oaat.pdf', width = 
 par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
 
 for(i in 1:d){
-  
   ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
   y.oaat = oaat.norm[,1]
   
@@ -459,52 +458,48 @@ for(i in 1:d){
        main = '',
        xlab = '')
   
-  for(j in 1:length(fnlocvec)){
-    
+  for(j in 1:ndat){
     y.oaat = oaat.norm[ix,j]
     lines(X.oaat.runoff[ix,i],y.oaat, col = linecols.ext[j], lwd = 2) 
   }
-  
   axis(1, col = 'grey', col.axis = 'grey', las = 1)
   axis(2, col = 'grey', col.axis = 'grey', las = 1)
   mtext(3, text = colnames(lhs)[i], line = 0.2, cex = 0.7)  
-  
 }
-
 reset()
 legend('top',
-       legend = fnams, 
+       legend = datnames, 
        col = linecols.ext,
+       cex = 0.8,
        lwd = 2,
        horiz = TRUE)
-
 dev.off()
 
 # Need sensitivity and ordered sensitivity of runoff change
 # Sensitivity analysis of space left over once we've removed the
 # non-performing models
-runoffchange.sensmat = matrix(NA, ncol=d, nrow=length(fnlocvec))
+runoffchange.sensmat = matrix(NA, ncol=d, nrow=ndat)
 colnames(runoffchange.sensmat) = colnames(lhs)
 
 # Run over all outputs
-for(i in 1:length(fnlocvec)){
+for(i in 1:ndat){
   
-  dat = load_ts_ensemble(fnlocvec[i])[toplevel.ix, ]
-  dat.change = ts.ensemble.change(dat, 1:10, 145:154)[runoff.ix]
+  dat.change = datchangemat[runoff.ix, i]
+  
   ts.sens = twoStep.sens(X=X.runoff, y = dat.change)
   sens.norm = ts.sens/max(ts.sens)
   runoffchange.sensmat[i, ] = sens.norm
 }
 
-abssum.runoffchange.sensmat = apply(abs(runoffchange.sensmat), 2, sum)
+abssum.runoffchange.sensmat = apply(abs(runoffchange.sensmat), 2, sum, na.rm = TRUE)
 
 # Sensitivity matrix of runoff-constrained inputs
 pdf(file = 'graphics/ppe_ii/sensitivity_matrix_runoff_change_constrained.pdf', width = 9, height = 9)
 par(mfrow = c(2,1), mar = c(8,7,3,2))
 image(t(runoffchange.sensmat), col = blues, axes = FALSE)
 axis(1, at = seq(from = 0, to = 1, by = 1/(d-1)), labels = colnames(lhs), las = 3, cex.axis = 0.8)
-axis(2, at = seq(from =0, to = 1, by = 1/(length(fnams)-1) ),
-     labels = fnams, las = 1)
+axis(2, at = seq(from =0, to = 1, by = 1/(ndat-1) ),
+     labels = datnames, las = 1)
 
 par(mar = c(8,7,0,2))
 plot(1:d, abssum.runoffchange.sensmat, axes = FALSE, xlab = '', ylab = 'Sum abs. sensitivity', pch = 19)
@@ -524,8 +519,6 @@ segments(x0 = 1:d, y0 = rep(0,d), x1 = 1:d, y1 = runoffchange.sort$x)
 axis(1, at = 1:d,  labels = names(runoffchange.sort$x), las = 3, cex.axis = 0.8)
 axis(2,las =1)
 dev.off()
-
-
 
 
 # --------------------------------------------------------------------------------
