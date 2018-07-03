@@ -617,16 +617,17 @@ pred = predict(em$emulator, newdata = X.unif, type = 'UK')
 ix.kept2 = which(y.unif[,'cs_gb'] > 750 & y.unif[,'cs_gb'] < 3000 & 
                   y.unif[,'cv'] > 300 & y.unif[,'cv'] < 800 &
                   y.unif[,'npp_n_gb'] > 35 & y.unif[,'npp_n_gb'] < 80 &
-                  pred$mean > 0.3
+                  pred$mean > 0.5
                   )
 X.kept2 = X.unif[ix.kept2, ]
+(nrow(X.kept2) / nsamp.unif) * 100
 
 
 dev.new(width = 7, height = 7)
 par(mfrow = c(2,3))
 
 for(i in 1:ncol(y.unif)){
-  hist(y.unif[ix.kept,i], main = fnams[i])
+  hist(y.unif[ix.kept2,i], main = fnams[i])
 }
 
 rb = brewer.pal(9, "RdBu")
@@ -651,6 +652,15 @@ image.plot(legend.only = TRUE,
 #text(0.2, 0.6, labels = paste0(colnames(lhs)[1:5],'\n'))
 legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
 
+dev.off()
+
+pdf("graphics/ppe_ii/constrained_inputs_hists.pdf", width = 9, height = 6)
+par(mfrow = c(4,8), mar = c(3,3,2,0.3), oma = c(0.5,0.5, 3, 0.5), fg = 'white')
+for(i in 1:d){
+  hist(X.kept2[,i], xlim = c(0,1), col = 'darkgrey', axes = FALSE, main = colnames(lhs)[i])
+  axis(1, col = 'black')
+  #axis(2)
+}
 dev.off()
 
 
