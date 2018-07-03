@@ -36,12 +36,23 @@ brbg <- brewer.pal(11, "BrBG")
 yob <- brewer.pal(9, "YlOrBr")
 yor <- brewer.pal(9, "YlOrRd")
 acc <- brewer.pal(8,'Paired')
+cbPal <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
-col.amaz <- acc[1]
-col.namerica <- acc[2]
-col.seasia <- acc[3]
-col.congo <- acc[4]
-col.global <- acc[5]
+
+col.amaz <- cbPal[1]
+col.seasia <- cbPal[2]
+col.congo <- cbPal[3]
+col.global <- cbPal[4]
+col.namerica <- cbPal[5]
+
+col.tropics = c(rep(col.amaz, 100), rep(col.seasia,100), rep(col.congo,100))
+
+
+#col.amaz <- acc[1]
+#col.namerica <- acc[2]
+#col.seasia <- acc[3]
+#col.congo <- acc[4]
+#col.global <- acc[5]
 
 
 pch.global <- 3
@@ -58,7 +69,33 @@ dfunc.up <- function(x,y,...){
   # function for plotting 2d kernel density estimates in pairs() plot.
   kde <- kde2d(x,y)
   image(kde, col = br, add = TRUE)
+}
+
+shadowtext <- function(x, y=NULL, labels, 
+                       col='white', bg='black',
+                       theta= seq(pi/4, 2*pi, length.out=8), r=0.1, ... ) {
+  # put text on a plot - white with a black background
+  xy <- xy.coords(x,y)
+  xo <- r*strwidth('A')
+  yo <- r*strheight('A')
+  for (i in theta) {
+    text( xy$x + cos(i)*xo, xy$y + sin(i)*yo, 
+          labels, col=bg, ... )
+  }
+  text(xy$x, xy$y, labels, col=col, ... )
+}
+
+# Plot colour as the third dimension, to compare model runs with
+# mean emulated surface.
+col3rd = function(n, pal, z){
+  # produce a set of colours that match the values of z
+  # Use for colour in 3rd dimension on a scatterplot.
+  cRP  = colorRampPalette(pal)
+  cols = cRP(n)
   
+  #out = cols[(z - min(z))/diff(range(z))*n + 1 ]
+  out = cols[cut(z, breaks = n) ]
+  out
 }
 
 
@@ -86,6 +123,116 @@ X_tropics_norm = normalize(X_tropics)
 Y_tropics = c(famous_agg$AMAZ_MOD_FRAC, famous_agg$SEASIA_MOD_FRAC, famous_agg$CONGO_MOD_FRAC)
 
 tropics_fit = km(~., design = X_tropics_norm, response=Y_tropics)
+
+# ----------------------------------------------------------------------------------
+# Emulator diagnostics
+#
+# ----------------------------------------------------------------------------------
+
+# Plot the emulator against the true leave-one-out prediction
+# This usually gives a very similar response to trend.reestim = TRUE
+# in leaveOneOut.km
+
+true.loo = function(X,y){
+  out.mean = rep(NA, length(y))
+  out.sd = rep(NA, length(y))
+  
+  for(i in 1:nrow(X)){
+    X.trunc = X[-i, ]
+    y.trunc = y[-i]
+    
+    X.target = matrix(X[i, ], nrow = 1)
+    colnames(X.target) <- colnames(X)
+    X.target.df = data.frame(X.target)
+    
+      fit = km(~., design = X.trunc, response = y.trunc)
+      pred = predict(fit,newdata = X.target, type = 'UK')
+      out.mean[i] = pred$mean
+      out.sd[i] = pred$sd
+  }
+  return(list(mean = out.mean, sd = out.sd))
+}  
+
+true.loo.all = true.loo(X = X_tropics_norm, y = Y_tropics)
+
+# Mean absolute error is about 0.03 or 3%
+print(paste('With T/P mean absolute cross validation error = ', mean(abs(true.loo.all$mean - Y_tropics))))
+
+
+pdf(width = 6, height = 6, file = 'graphics/true_loo_all.pdf' )
+xlim = c(-0.05, 1.05)
+ylim = c(-0.05, 1.05)
+par(las =1)
+plot(Y_tropics, true.loo.all$mean, pch = 20,
+     xlab = 'observation', ylab = 'prediction',
+     col = col.tropics,
+     xlim = xlim, 
+     ylim = ylim,
+    bty = 'n',
+    axes = FALSE,
+    xaxs = 'i', yaxs = 'i')
+
+segments(x0 = Y_tropics, y0 = true.loo.all$mean - (2*true.loo.all$sd),
+          x1 = Y_tropics, y1 = true.loo.all$mean +(2*true.loo.all$sd),
+         col = col.tropics)
+axis(1, pos = 0, col = 'grey')
+axis(2, pos = 0, col = 'grey')
+abline(0,1, col = 'grey')
+legend('top', legend = c('Amazon', 'Asia', 'Africa'),
+       pch = 20, col = c(col.amaz, col.seasia, col.congo),
+       bty = 'n')
+dev.off()
+
+
+# Rank histograms for checking the uncertainty?
+# The principle behind the rank histogram is quite simple. 
+# Ideally, one property that is desired from an EF is reliable probabilities;
+# if ensemble relative frequency suggests P percent probability of occurrence,
+# the event truly ought to have P probability of occurring. 
+# For this probability to be reliable, the set of ensemble member forecast values
+# at a given point and the true state (the verification) ought to be able to be 
+# considered random samples from the same probability distribution.
+# This reliability then implies in turn that if an n-member ensemble and the
+# verification are pooled into a vector and sorted from lowest to highest,
+# then the verification is equally likely to occur in each of the n + 1 possible ranks. 
+# If the rank of the verification is tallied and the process repeated over many
+# independent sample points, a uniform histogram over the possible ranks should result.
+# From https://journals.ametsoc.org/doi/full/10.1175/1520-0493%282001%29129%3C0550%3AIORHFV%3E2.0.CO%3B2
+
+
+loo.rankhist = function(obs, pred.mean, pred.sd, n = 1000){
+  # a version of the rank histogram     
+  obs.ranks = rep(NA, length(obs))
+  
+  for(i in 1:length(obs)){
+    ranks = rank(c(obs[i], rnorm(n = n, mean = pred.mean[i], sd = pred.sd[i])))
+    obs.ranks[i] = ranks[1]
+  }
+  
+  out = obs.ranks/(n+1)
+  out
+}
+
+true.loo.rankhist = loo.rankhist(obs = Y_tropics, pred.mean = true.loo.all$mean, pred.sd = true.loo.all$sd, n = 500)
+
+pdf(file = 'graphics/rankhist.pdf', width = 6, height =4)
+par(las = 1, fg = 'white')
+hist(true.loo.rankhist, col = 'grey', 
+     axes = FALSE, main = '',
+     xlab = 'Rank'
+     )
+axis(1, col = 'black')
+axis(2, col = 'black')
+dev.off()
+
+# Prediction errors normalised by their standard deviations
+# approximately follow a normal distribution - pehaps the tails are a little off.
+true.loo.err.norm = (true.loo.all$mean - Y_tropics) / true.loo.all$sd
+pdf(file = 'graphics/normalisedQQ.pdf')
+par(las = 1)
+qqnorm(true.loo.err.norm)
+abline(0,1)
+dev.off()
 
 
 # normalize amazon obs
@@ -246,41 +393,73 @@ text(tp.congo.norm, 'Central Africa', pos = 4, font = 2)
 text(tp.seasia.norm, 'SE Asia', pos = 4, font = 2)
 dev.off()
 
-# Plot colour as the third dimension, to compare model runs with
-# mean emulated surface.
-col3rd = function(n, pal, z){
-  # produce a set of colours that match the values of z
-  # Use for colour in 3rd dimension on a scatterplot.
-  cRP  = colorRampPalette(pal)
-  cols = cRP(n)
-  out = cols[(z - min(z))/diff(range(z))*n + 1]
-  out
-}
 
-zcolor = col3rd(n=3, pal=byr, z = Y_tropics) 
 plot(X_tropics[, 8], X_tropics[, 9], col = 'black', bg = zcolor, pch = 21, cex = 2)
 
 # Normalize the colours to the background
 # the first 300 points are Y_tropics
-allz = c(Y_tropics,plausible.amazon.bc$pred$mean)
-zcolor = col3rd(n=11, pal=byr, z = allz) 
-plot(X_tropics[, 8], X_tropics[, 9], col = 'black', bg = zcolor, pch = 21, cex = 2)
+
+allz = c(Y_tropics,obs_amazon,obs_seasia, obs_congo, plausible.amazon.bc$pred$mean)
+zcolor = col3rd(n=9, pal=viridis(7), z = allz) 
 
 pdf(file = 'graphics/emulated_fraction_vs_temp_precip_pcolcor.pdf',width = 7, height = 7)
-quilt.plot(plausible.amazon.bc$X.unif[,8], plausible.amazon.bc$X.unif[, 9], plausible.amazon.bc$pred$mean, col = byr, xlab = 'Normalised regional temperature', ylab = 'Normalised regional precipitation', legend.args = list(text = "forest\nfraction",col="black", cex=1.2, side=3, line=1))
-cex = 1.5
-lwd = 2
-points(X_tropics_norm[1:100,8], X_tropics_norm[1:100,9], col = col.amaz, bg = zcolor[1:100], pch = 21, cex = cex, lwd = lwd)
-points(X_tropics_norm[101:200,8], X_tropics_norm[101:200,9], col = col.seasia, bg = zcolor[101:200], pch = 21, cex = cex, lwd = lwd)
-points(X_tropics_norm[201:300,8], X_tropics_norm[201:300,9], col = col.congo, bg = zcolor[201:300], pch = 21, cex = cex, lwd = lwd)
+par(las = 1)
+quilt.plot(plausible.amazon.bc$X.unif[,8],
+           plausible.amazon.bc$X.unif[, 9], plausible.amazon.bc$pred$mean,
+           col = viridis(7),
+           xlab = 'Normalised regional temperature', 
+           ylab = 'Normalised regional precipitation', 
+           legend.args = list(text = "forest\nfraction",
+                              col="black", cex=1.2, side=3, line=1))
+cex = 1.4
+lwd = 1.5
+points(X_tropics_norm[1:100,8], X_tropics_norm[1:100,9], 
+       col = 'black', bg = zcolor[1:100], pch = 21, cex = cex, lwd = lwd)
+points(X_tropics_norm[101:200,8], X_tropics_norm[101:200,9], 
+       col = 'black', bg = zcolor[101:200], pch = 22, cex = cex, lwd = lwd)
+points(X_tropics_norm[201:300,8], X_tropics_norm[201:300,9], 
+       col = 'black', bg = zcolor[201:300], pch = 24, cex = cex, lwd = lwd)
 
-points(tp.amaz.norm, col = 'black', pch = 21, cex = 2.5, bg = col.amaz, lwd = 2.5)
-points(tp.seasia.norm, col = 'black', pch = 21, cex = 2.5, bg = col.seasia, lwd = 2.5)
-points(tp.congo.norm, col = 'black', pch = 21, cex = 2.5, bg = col.congo, lwd = 2.5)
+points(tp.amaz.norm, col = 'black', pch = 21, cex = 2.5, bg = zcolor[301], lwd = 2)
+points(tp.seasia.norm, col = 'black', pch = 22, cex = 2.5, bg = zcolor[302], lwd = 2)
+points(tp.congo.norm, col = 'black', pch = 24, cex = 2.5, bg = zcolor[303], lwd = 2)
 
-text(tp.amaz.norm, 'Amazon', pos = 4, font = 2)
-text(tp.congo.norm, 'Central Africa', pos = 4, font = 2)
-text(tp.seasia.norm, 'SE Asia', pos = 4, font = 2)
+shadowtext(tp.amaz.norm[1],tp.amaz.norm[2], 'Amazon', pos = 4, font = 2,r =0.2)
+shadowtext(tp.congo.norm[1], tp.congo.norm[2], 'Central Africa', pos = 4, font = 2, r = 0.2)
+shadowtext(tp.seasia.norm[1], tp.seasia.norm[2], 'SE Asia', pos = 4, font = 2, r = 0.2)
+dev.off()
+
+# No emulated surface in this version
+
+
+pdf(file = 'graphics/fraction_vs_temp_precip_pcolcor.pdf',width = 8, height = 7)
+par(las = 1, fg = 'black', mar = c(5,6,3,7))
+Y_obs = c(Y_tropics, obs_amazon, obs_seasia, obs_congo)
+Y_obs_ix = 1:300
+zcolor = col3rd(n=9, pal= viridis(9), z = Y_obs) 
+pr =1e5
+plot(X_tropics[, 8]-273.15, X_tropics[, 9]*pr, col = 'black', pch = 21, cex = 2, type = 'n',
+     xlab = expression(paste('Regional temperature (', degree,'C)')),
+     ylab = expression(paste('Regional Precipitation x',10^5,' kgm'^-2,'s'^-1))
+)
+                       
+
+
+cex = 1.4
+lwd = 1.5
+
+points(X_tropics[1:100,8]-273.15, X_tropics[1:100,9]*pr, col = 'black', bg = zcolor[1:100], pch = 21, cex = cex, lwd = lwd)
+points(X_tropics[101:200,8]-273.15, X_tropics[101:200,9]*pr, col = 'black', bg = zcolor[101:200], pch = 22, cex = cex, lwd = lwd)
+points(X_tropics[201:300,8]-273.15, X_tropics[201:300,9]*pr, col = 'black', bg = zcolor[201:300], pch = 24, cex = cex, lwd = lwd)
+
+points(temps_obs$AMAZ_OBS_TEMP, precips_obs$AMAZ_OBS_PRECIP*pr, col = 'black', pch = 21, cex = 2.5, bg = zcolor[301], lwd = 2)
+points(temps_obs$SEASIA_OBS_TEMP, precips_obs$SEASIA_OBS_PRECIP*pr, col = 'black', pch = 22, cex = 2.5, bg = zcolor[302], lwd = 2)
+points(temps_obs$CONGO_OBS_TEMP, precips_obs$CONGO_OBS_PRECIP*pr, col = 'black', pch = 24, cex = 2.5, bg = zcolor[303], lwd = 2)
+
+shadowtext(temps_obs$AMAZ_OBS_TEMP,precips_obs$AMAZ_OBS_PRECIP*pr, 'Amazon', pos = 4, font = 2,r =0.2)
+shadowtext(temps_obs$SEASIA_OBS_TEMP, precips_obs$SEASIA_OBS_PRECIP*pr, 'Central Africa', pos = 4, font = 2, r = 0.2)
+shadowtext(temps_obs$CONGO_OBS_TEMP, precips_obs$CONGO_OBS_PRECIP*pr, 'SE Asia', pos = 4, font = 2, r = 0.2)
+image.plot(z = Y_obs, legend.only = TRUE, col = viridis(9), horizontal = FALSE,  legend.args = list(text = "forest\nfraction",col="black", cex=1.2, side=3, line=1))
 dev.off()
 
 # ------------------------------------------------------------------------
@@ -501,6 +680,97 @@ dev.off()
 # fit the data?
 # -------------------------------------------------------------
 
+# Produce genuine LOO for all these, put them together and compare with 
+# true.loo
+fit.x.amaz = km(~., design = X.norm, response=famous_agg$AMAZ_MOD_FRAC)
+fit.x.seasia = km(~., design = X.norm, response=famous_agg$SEASIA_MOD_FRAC)
+fit.x.congo = km(~., design = X.norm, response=famous_agg$CONGO_MOD_FRAC)
+
+# This is much quicker than adding them all together!
+true.loo.amaz = true.loo(X = X.norm, y = famous_agg$AMAZ_MOD_FRAC)
+true.loo.seasia = true.loo(X = X.norm, y = famous_agg$SEASIA_MOD_FRAC)
+true.loo.congo = true.loo(X = X.norm, y = famous_agg$CONGO_MOD_FRAC)
+
+true.loo.X.mean = c(true.loo.amaz$mean, true.loo.seasia$mean, true.loo.congo$mean)
+true.loo.X.sd = c(true.loo.amaz$sd, true.loo.seasia$sd, true.loo.congo$sd)
+
+
+# Mean absolute error is about 0.06 or 6%
+print(paste('Just X mean absolute cross validation error =', mean(abs(true.loo.X.mean - Y_tropics))))
+
+
+plot(Y_tropics, true.loo.X.mean)
+pdf(width = 6, height = 6, file = 'graphics/true_loo_X.pdf' )
+xlim = c(-0.05, 1.05)
+ylim = c(-0.05, 1.05)
+par(las =1)
+plot(Y_tropics, true.loo.X.mean, pch = 20,
+     xlab = 'observation', ylab = 'prediction',
+     col = col.tropics,
+     xlim = xlim, 
+     ylim = ylim,
+     bty = 'n',
+     axes = FALSE,
+     xaxs = 'i', yaxs = 'i')
+
+segments(x0 = Y_tropics, y0 = true.loo.X.mean - (2*true.loo.X.sd),
+         x1 = Y_tropics, y1 = true.loo.X.mean +(2*true.loo.X.sd),
+         col = col.tropics)
+axis(1, pos = 0, col = 'grey')
+axis(2, pos = 0, col = 'grey')
+abline(0,1, col = 'grey')
+legend('top', legend = c('Amazon', 'Asia', 'Africa'),
+       pch = 20, col = c(col.amaz, col.seasia, col.congo),
+       bty = 'n')
+dev.off()
+
+
+# Mean absolute error is about 0.03 or 3%
+print(paste('mean absolute cross validation error = ', mean(abs(true.loo.all$mean - Y_tropics))))
+
+
+
+
+# This is much quicker than adding them all together!
+true.loo.tp.amaz = true.loo(X = X_tropics_norm[1:100, 8:9], y = famous_agg$AMAZ_MOD_FRAC)
+true.loo.tp.seasia = true.loo(X = X_tropics_norm[1:100, 8:9], y = famous_agg$SEASIA_MOD_FRAC)
+true.loo.tp.congo = true.loo(X = X_tropics_norm[1:100, 8:9], y = famous_agg$CONGO_MOD_FRAC)
+
+true.loo.tp.mean = c(true.loo.tp.amaz$mean, true.loo.tp.seasia$mean, true.loo.tp.congo$mean)
+true.loo.tp.sd = c(true.loo.tp.amaz$sd, true.loo.tp.seasia$sd, true.loo.tp.congo$sd)
+true.loo.tp.err  = Y_tropics
+
+print(paste('mean absolute cross validation error = ', mean(abs(true.loo.tp.mean - Y_tropics))))
+pdf(width = 6, height = 6, file = 'graphics/true_loo_tp.pdf' )
+xlim = c(-0.05, 1.05)
+ylim = c(-0.05, 1.05)
+par(las =1)
+plot(Y_tropics, true.loo.tp.mean, pch = 20,
+     xlab = 'observation', ylab = 'prediction',
+     col = col.tropics,
+     xlim = xlim, 
+     ylim = ylim,
+     bty = 'n',
+     axes = FALSE,
+     xaxs = 'i', yaxs = 'i')
+
+segments(x0 = Y_tropics, y0 = true.loo.X.mean - (2*true.loo.tp.sd),
+         x1 = Y_tropics, y1 = true.loo.X.mean +(2*true.loo.tp.sd),
+         col = col.tropics)
+axis(1, pos = 0, col = 'grey')
+axis(2, pos = 0, col = 'grey')
+abline(0,1, col = 'grey')
+legend('top', legend = c('Amazon', 'Asia', 'Africa'),
+       pch = 20, col = c(col.amaz, col.seasia, col.congo),
+       bty = 'n')
+dev.off()
+
+
+
+
+
+
+# fit using just temperature andprecip
 fit.tp  = km(~., design = X_tropics_norm[, 8:9], response=Y_tropics)
 pred.tp = leaveOneOut.km(fit.tp, type="UK", trend.reestim=TRUE)
 
@@ -513,6 +783,5 @@ fit.resid.seasia = km(~., design = X.norm, response=fit.tp.resid[101:200])
 fit.resid.congo = km(~., design = X.norm, response=fit.tp.resid[201:300])
 
 plot(fit.resid.congo)
-
 
 
