@@ -323,43 +323,12 @@ obs_seasia- pred.seasia.bc$mean
 
 # --------------------------------------------------------------------
 # Sensitivity analysis, including temperature and precipitation
+# How does the forest fraction sensitivity to parameters change
+# at the default settings for all climates?
 # --------------------------------------------------------------------
 library(sensitivity)
 
 n = 21
-X.oat = oaat.design(X_tropics_norm, n = n, hold = amaz.x)
-colnames(X.oat) <- colnames(X_tropics_norm)
-
-fit.sens = km(~.,design = X_tropics_norm, response = Y_tropics)
-
-pred.sens = predict(fit.sens, newdata = X.oat, type = 'UK')
-
-col.chosen = col.amaz
-col.transp = adjustcolor(col.chosen, alpha = 0.5)
-
-#dev.new(width = 5, height = 5)
-pdf(width = 7, height = 6, file = 'graphics/sensitivity_TP_amazon.pdf') 
-par(mfrow = c(2,5), las = 1, mar = c(5,0.5,2,0.5), oma = c(0,5,0,0), fg = 'grey')
-for(i in 1: ncol(X_tropics_norm)){
-  
-  ix <- seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
-  print(ix)
-  plot(X.oat[ix, i], pred.sens$mean[ix], ylim = c(0,1), xlab = colnames(X.oat)[i], type = 'n', axes = FALSE)
-  axis(1)
-  if (i==1 | i==6 ) {axis(2)
-    mtext(side = 2, line = 3.5, text = 'FOREST FRACTION', las = 0, col = 'black')
-  }
-  
-  polygon(x = c(X.oat[ix, i], rev(X.oat[ix, i])),
-          y = c( (pred.sens$mean[ix] - pred.sens$sd[ix]), rev(pred.sens$mean[ix] + pred.sens$sd[ix])),
-          col = col.transp, border = col.transp)
-  
-  lines(X.oat[ix, i], pred.sens$mean[ix], ylim = c(0,1), xlab = colnames(X.oat)[i], col = col.chosen )
-}
-dev.off()
-# How does the forest fraction sensitivity to parameters change
-# at the default settings for all climates?
-
 xlist = list(amaz.x, seasia.x, congo.x)
 ## build a matrix of OAT predictions
 oat.mean.mat = matrix(nrow = n*length(amaz.x), ncol = length(xlist))
@@ -377,7 +346,7 @@ for(i in 1:length(xlist)){
 col.list = list(col.amaz, col.seasia, col.congo)
 
 pdf(width = 7, height = 6, file = 'graphics/sensitivity_TP_all.pdf') 
-par(mfrow = c(2,5), las = 1, mar = c(5,0.5,2,0.5), oma = c(0,5,0,0), fg = 'grey')
+par(mfrow = c(2,5), las = 1, mar = c(5,0.5,3,0.5), oma = c(0,5,0,0), fg = 'grey')
 
 for(i in 1: ncol(X_tropics_norm)){
   
@@ -410,6 +379,34 @@ legend('top', legend = c('Amazon', 'SE Asia', 'C Africa'),
        fill = adjustcolor(c(col.list, recursive = TRUE), alpha = 0.5),
        cex = 1.2, border = NA, horiz = TRUE)
 
+dev.off()
+
+# ------------------------------------------------------------------
+# FAST99 sensitivity analysis of Saltelli et al (1999)
+# generate the design to run the emulator at, using fast99
+# ------------------------------------------------------------------
+
+X.fast <- fast99(model = NULL, factors = colnames(X_tropics_norm), n = 1000,
+            q = "qunif", q.arg = list(min = 0, max = 1))
+
+pred.fast = predict(tropics_fit, newdata = X.fast$X, type = 'UK')
+
+
+
+# Calculate the sensitivity indices
+fast.tell <- tell(X.fast, pred.fast$mean)
+
+bp.convert <- function(fastmodel){
+  # get the FAST summary into an easier format for barplot
+  fast.summ <- print(fastmodel)
+  fast.diff <- fast.summ[ ,2] - fast.summ[ ,1]
+  fast.bp <- t(cbind(fast.summ[ ,1], fast.diff))
+  fast.bp
+}
+
+pdf(width = 7, height = 5, file = 'graphics/fast_barplot.pdf')
+par(las = 2, mar = c(9,5,3,2))
+barplot(bp.convert(fast.tell), col = c('skyblue', 'grey'), ylab = 'relative sensitivity')
 dev.off()
 
 
