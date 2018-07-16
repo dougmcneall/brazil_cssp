@@ -71,6 +71,23 @@ dfunc.up <- function(x,y,...){
   image(kde, col = br, add = TRUE)
 }
 
+dfunc.up.truth = function(x,y, ...){
+  require(MASS)
+  require(RColorBrewer)
+  
+  xtrue <- tail(x,1)
+  ytrue <- tail(y,1)
+  
+  xdash <- head(x, -1)
+  ydash <- head(y, -1)
+  
+  br <- brewer.pal(9, 'Blues')
+  # function for plotting 2d kernel density estimates in pairs() plot.
+  kde <- kde2d(xdash,ydash)
+  image(kde, col = br, add = TRUE)
+  points(xtrue, ytrue, pch =19, col = 'red')
+}
+
 shadowtext <- function(x, y=NULL, labels, 
                        col='white', bg='black',
                        theta= seq(pi/4, 2*pi, length.out=8), r=0.1, ... ) {
@@ -96,6 +113,11 @@ col3rd = function(n, pal, z){
   #out = cols[(z - min(z))/diff(range(z))*n + 1 ]
   out = cols[cut(z, breaks = n) ]
   out
+}
+
+reset <- function() {
+  par(mfrow=c(1, 1), oma=rep(0, 4), mar=rep(0, 4), new=TRUE)
+  plot(0:1, 0:1, type="n", xlab="", ylab="", axes=FALSE)
 }
 
 
@@ -258,10 +280,12 @@ tp.congo.norm <- normalize(
 #colnames(tp.congo.norm) <- c('OBS_TEMP', 'OBS_PRECIP')
 colnames(tp.congo.norm) <- model_climate_names
 
+# Default parameters attached and observed temperature and precip
 amaz.x  <- cbind(X.stan.norm, tp.amaz.norm)
 congo.x <- cbind(X.stan.norm, tp.congo.norm)
 seasia.x <- cbind(X.stan.norm, tp.seasia.norm)
 
+# Emulator predicted bias corrected at default parameters
 pred.amaz.bc <- predict(tropics_fit, newdata=amaz.x, type='UK')
 pred.congo.bc <- predict(tropics_fit, newdata=congo.x, type='UK')
 pred.seasia.bc <- predict(tropics_fit, newdata=seasia.x, type='UK')
@@ -319,6 +343,7 @@ par(mfrow = c(2,5), las = 1, mar = c(5,0.5,2,0.5), oma = c(0,5,0,0), fg = 'grey'
 for(i in 1: ncol(X_tropics_norm)){
   
   ix <- seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  print(ix)
   plot(X.oat[ix, i], pred.sens$mean[ix], ylim = c(0,1), xlab = colnames(X.oat)[i], type = 'n', axes = FALSE)
   axis(1)
   if (i==1 | i==6 ) {axis(2)
@@ -332,6 +357,67 @@ for(i in 1: ncol(X_tropics_norm)){
   lines(X.oat[ix, i], pred.sens$mean[ix], ylim = c(0,1), xlab = colnames(X.oat)[i], col = col.chosen )
 }
 dev.off()
+# How does the forest fraction sensitivity to parameters change
+# at the default settings for all climates?
+
+xlist = list(amaz.x, seasia.x, congo.x)
+## build a matrix of OAT predictions
+oat.mean.mat = matrix(nrow = n*length(amaz.x), ncol = length(xlist))
+oat.sd.mat = matrix(nrow = n*length(amaz.x), ncol = length(xlist))
+
+for(i in 1:length(xlist)){
+  
+  X.oat = oaat.design(X_tropics_norm, n = n, hold = xlist[[i]])
+  colnames(X.oat) = colnames(xlist[[i]])
+  pred = predict(fit.sens, newdata = X.oat, type = 'UK')
+  oat.mean.mat[, i ] = pred$mean
+  oat.sd.mat[, i ] = pred$sd
+}
+
+col.list = list(col.amaz, col.seasia, col.congo)
+
+pdf(width = 7, height = 6, file = 'graphics/sensitivity_TP_all.pdf') 
+par(mfrow = c(2,5), las = 1, mar = c(5,0.5,2,0.5), oma = c(0,5,0,0), fg = 'grey')
+
+for(i in 1: ncol(X_tropics_norm)){
+  
+  ix <- seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  plot(X.oat[ix, i], pred.sens$mean[ix], ylim = c(0,1), xlab = colnames(X.oat)[i], type = 'n', axes = FALSE)
+  axis(1)
+  if (i==1 | i==6 ) {axis(2)
+    mtext(side = 2, line = 3.5, text = 'Forest fraction', las = 0, col = 'black')
+  }
+  for(j in 1:length(xlist)){
+    
+    col.chosen = col.list[[j]]
+    col.transp = adjustcolor(col.chosen, alpha = 0.5)
+    
+    pred.mean = oat.mean.mat[, j]
+    pred.sd   = oat.sd.mat[, j]
+    
+    polygon(x = c(X.oat[ix, i], rev(X.oat[ix, i])),
+            y = c( (pred.mean[ix] - pred.sd[ix]), rev(pred.mean[ix] + pred.sd[ix])),
+            col = col.transp, border = col.transp)
+    
+    lines(X.oat[ix, i], pred.mean[ix], ylim = c(0,1), xlab = colnames(X.oat)[i], col = col.chosen )
+  }
+}
+reset()
+legend('top', legend = c('Amazon', 'SE Asia', 'C Africa'), 
+       col = c(col.list, recursive = TRUE),
+       lty = 'solid', lwd = 1, pch = NA, bty = 'n',
+       text.col = 'black',
+       fill = adjustcolor(c(col.list, recursive = TRUE), alpha = 0.5),
+       cex = 1.2, border = NA, horiz = TRUE)
+
+dev.off()
+
+
+
+# ------------------------------------------------------
+# Find the set of plausible inputs, when 
+# temperature and precip are included in the inputs
+# ------------------------------------------------------
 
 inputs.set <- function(X, y, thres, obs, obs.sd = 0, disc = 0, disc.sd = 0, n = 100000, abt = FALSE){ 
   # find a set of inputs that are consistent with a particular
@@ -357,13 +443,11 @@ inputs.set <- function(X, y, thres, obs, obs.sd = 0, disc = 0, disc.sd = 0, n = 
   }
   
   X.out <- X.unif[ix.bt, ]
-  
+
   return(list(X.out = X.out, fit = fit, X.unif = X.unif, pred = pred,pred.impl = pred.impl))   
-  
 }
 
 
-# Find the set of plausible inputs, when temperature and precip are included in the inputs
 plausible.amazon.bc <- inputs.set(X = X_tropics_norm, y = Y_tropics,thres = 3,
                                   obs = obs_amazon,
                                   obs.sd = 0,
@@ -400,7 +484,7 @@ plot(X_tropics[, 8], X_tropics[, 9], col = 'black', bg = zcolor, pch = 21, cex =
 # the first 300 points are Y_tropics
 
 allz = c(Y_tropics,obs_amazon,obs_seasia, obs_congo, plausible.amazon.bc$pred$mean)
-zcolor = col3rd(n=9, pal=viridis(7), z = allz) 
+zcolor = col3rd(n=9, pal=viridis(11), z = allz) 
 
 pdf(file = 'graphics/emulated_fraction_vs_temp_precip_pcolcor.pdf',width = 7, height = 7)
 par(las = 1)
@@ -463,6 +547,61 @@ image.plot(z = Y_obs, legend.only = TRUE, col = viridis(9), horizontal = FALSE, 
 dev.off()
 
 # ------------------------------------------------------------------------
+# Two-at-a-time sensitivity analysis, with inputs held at their default
+# settings.
+# ------------------------------------------------------------------------
+
+# construct output matrix
+tseq = seq(from = 0, to = 1, by = 0.05)
+pseq = seq(from = 0, to = 1, by = 0.05)
+tdashp = expand.grid(tseq, pseq)
+norm.mat = matrix(X.stan.norm, nrow = nrow(tdashp), ncol = ncol(X.stan.norm), byrow = TRUE)
+X.taat.tp = cbind(norm.mat, tdashp)
+colnames(X.taat.tp) = colnames(X_tropics_norm)
+
+# sample from the emulator
+y.taat.tp = predict(tropics_fit, newdata = X.taat.tp, type = 'UK')
+
+# tend to use cplot or cplotShort for multiple graphics
+pdf(width = 7, height = 7, file = 'graphics/taat_temp_precip.pdf')
+cplot(X.taat.tp[,8], X.taat.tp[,9], y.taat.tp$mean, 
+      cols = viridis(10), pch = 19, cex = 3)
+dev.off()
+
+# Can use quilt plot as long as the number of points in either direction matches the
+# data.
+allz = c(Y_tropics,obs_amazon,obs_seasia, obs_congo, y.taat.tp$mean)
+zcolor = col3rd(n=9, pal=viridis(11), z = allz) 
+
+pdf(width = 7, height = 7, file = 'graphics/taat_temp_precip_quilt.pdf')
+par(las = 1)
+quilt.plot(X.taat.tp[,8], X.taat.tp[,9], y.taat.tp$mean, 
+      col = viridis(11), nx = 21, ny = 21,
+      xlab = 'Normalised Regional Mean Temperature', ylab = 'Normalised Regional Mean Precipitation')
+
+cex = 1.4
+lwd = 1.5
+points(X_tropics_norm[1:100,8], X_tropics_norm[1:100,9], 
+       col = 'black', bg = zcolor[1:100], pch = 21, cex = cex, lwd = lwd)
+points(X_tropics_norm[101:200,8], X_tropics_norm[101:200,9], 
+       col = 'black', bg = zcolor[101:200], pch = 22, cex = cex, lwd = lwd)
+points(X_tropics_norm[201:300,8], X_tropics_norm[201:300,9], 
+       col = 'black', bg = zcolor[201:300], pch = 24, cex = cex, lwd = lwd)
+
+points(tp.amaz.norm, col = 'black', pch = 21, cex = 2.5, bg = zcolor[301], lwd = 2)
+points(tp.seasia.norm, col = 'black', pch = 22, cex = 2.5, bg = zcolor[302], lwd = 2)
+points(tp.congo.norm, col = 'black', pch = 24, cex = 2.5, bg = zcolor[303], lwd = 2)
+
+shadowtext(tp.amaz.norm[1],tp.amaz.norm[2], 'Amazon', pos = 4, font = 2,r =0.2)
+shadowtext(tp.congo.norm[1], tp.congo.norm[2], 'Central Africa', pos = 4, font = 2, r = 0.2)
+shadowtext(tp.seasia.norm[1], tp.seasia.norm[2], 'SE Asia', pos = 4, font = 2, r = 0.2)
+
+dev.off()
+
+
+
+
+# ------------------------------------------------------------------------
 # We worked out the response surface for y = f(X, T, P).
 # Now bias correct T and P in all of the ensemble members.
 # ------------------------------------------------------------------------
@@ -503,6 +642,8 @@ mean(abs(model_runs.bc$mean[101:200] - obs_seasia))
 mean(abs(Y_tropics[201:300] - obs_congo))
 mean(abs(model_runs.bc$mean[201:300] - obs_congo))
 
+# Plot the observation forest fraction, and the model at the default 
+# parameters and bias corrected.
 pdf(width = 7, height = 5, file='graphics/bias_corrected_fractions.pdf')
 par(las=1)
 plot(c(1,2,3), c(obs_amazon, obs_congo, obs_seasia), xlim=c(0.5,3.5), ylim=c(0,1), pch=19,
@@ -554,6 +695,71 @@ legend('topright', legend = c('model runs', 'bias corrected model runs'),
        )
 dev.off()
 
+
+dotchart(c(obs_amazon, obs_congo, obs_seasia),
+         labels = c('Amazon', 'Africa', 'Asia'), xlim = c(0,1))
+
+pdf(file = 'graphics/dotchart_fractions.pdf', width = 6, height = 7)
+par(mar = c(5,6,2,8))
+plot(c(obs_amazon, obs_congo, obs_seasia), c(1,2,3), ylim=c(0.5,3.5), xlim=c(0,1), pch=19,
+     col = 'blue', cex=1.5, ylab='', xlab='Forest fraction',
+     axes = FALSE, type = 'n', bty = 'l',
+     panel.first = rect(c(0,0),c(0.5,2.5),c(1,1),c(1.5,3.5), col = 'grey95', border = 'grey95'),
+     xaxs = 'i', yaxs = 'i'
+     )
+abline(h = c(0.75, 1, 1.25, 1.75, 2, 2.25, 2.75, 3, 3.25), col = 'grey', lty = 'dashed')
+
+# observed points
+points(c(obs_amazon, obs_congo, obs_seasia),c(1.25,2.25,3.25), pch=19,
+       col = c(col.amaz, col.congo, col.seasia), cex=1.5)
+
+# standard model run points
+points(c(standard.amazon$mean, standard.congo$mean,standard.seasia$mean),
+        1:3, pch=17, col = c(col.amaz, col.congo, col.seasia), cex = 1.5)
+
+segments(standard.amazon$mean - standard.amazon$sd,1,
+         standard.amazon$mean + standard.amazon$sd,1, col=col.amaz, lwd = 1.5)
+
+segments(standard.congo$mean - standard.congo$sd,2,
+         standard.congo$mean + standard.congo$sd,2, col=col.congo, lwd =1.5)
+
+segments(standard.seasia$mean - standard.seasia$sd,3,
+         standard.seasia$mean + standard.seasia$sd,3, col=col.seasia, lwd = 1.5)
+
+# bias corrected points
+points(c(pred.amaz.bc$mean, pred.congo.bc$mean, pred.seasia.bc$mean),
+       c(0.75,1.75,2.75), col=c(col.amaz, col.congo, col.seasia), pch=15, cex = 1.5)
+
+segments( pred.amaz.bc$mean - pred.amaz.bc$sd, 0.75,
+        pred.amaz.bc$mean + pred.amaz.bc$sd, 0.75, col=col.amaz, lwd = 1.5)
+
+segments(pred.congo.bc$mean - pred.congo.bc$sd,1.75,
+         pred.congo.bc$mean + pred.congo.bc$sd,1.75,  col=col.congo, lwd = 1.5)
+
+segments(pred.seasia.bc$mean - pred.seasia.bc$sd,2.75,
+         pred.seasia.bc$mean + pred.seasia.bc$sd,2.75, col=col.seasia, lwd = 1.5)
+
+axis(2, labels = c('Amazon', 'Africa', 'SE Asia'), cex.axis = 1.3, at = 1:3, col = NA, las = 1)
+axis(1)
+par(xpd = TRUE)
+text(c(1,1,1), c(3.25, 3, 2.75), labels = c('observed', 'default parameters', 'bias corrected'), pos = 4, cex = 1)
+dev.off()
+
+# Error for the standard runs when bias corrected and not
+
+print(paste('amazon default error =', standard.amazon$mean - obs_amazon))
+print(paste('SE Asia default error =', standard.seasia$mean - obs_seasia))
+print(paste('C Africa default error =', standard.congo$mean - obs_congo))
+
+print(paste('amazon bias corrected error =', pred.amaz.bc$mean - obs_amazon))
+print(paste('SE Asia bias corrected error =', pred.seasia.bc$mean - obs_seasia))
+print(paste('C Africa bias corrected error =', pred.congo.bc$mean - obs_congo))
+
+nobc.mae = mean(abs(c((standard.amazon$mean - obs_amazon), (standard.seasia$mean - obs_seasia), (standard.congo$mean - obs_congo)))) 
+bc.mae = mean(abs(c((pred.amaz.bc$mean - obs_amazon), (pred.seasia.bc$mean - obs_seasia), (pred.congo.bc$mean - obs_congo))))
+
+bc.mae / nobc.mae
+
 # --------------------------------------------------------
 # Find points which are NROY for all three systems,
 # When T and P are held at observed values and not 
@@ -590,7 +796,7 @@ amaz.impl = impl(em = pred.unif.amaz$mean, em.sd = pred.unif.amaz$sd,
 nroy.ix.amaz = which(amaz.impl < thres)
 
 pdf(width = 7, height = 7, file = 'graphics/best_inputs_amazon.pdf')
-pairs(X.unif[nroy.ix.amaz, ], panel = dfunc.up, gap = 0, upper.panel = NULL)
+pairs(rbind(X.unif[nroy.ix.amaz, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
 
 
@@ -602,7 +808,7 @@ amaz.impl.bc = impl(em = pred.unif.amaz.bc$mean, em.sd = pred.unif.amaz.bc$sd,
 nroy.ix.amaz.bc = which(amaz.impl.bc < thres)
 
 pdf(width = 7, height = 7, file = 'graphics/best_inputs_amazon_bc.pdf')
-pairs(X.unif[nroy.ix.amaz.bc, ], panel = dfunc.up, gap = 0, upper.panel = NULL)
+pairs(rbind(X.unif[nroy.ix.amaz.bc, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
 
 
@@ -615,7 +821,7 @@ seasia.impl = impl(em = pred.unif.seasia$mean, em.sd = pred.unif.seasia$sd,
 nroy.ix.seasia = which(seasia.impl < thres)
 
 pdf(width = 7, height = 7, file = 'graphics/best_inputs_seasia.pdf')
-pairs(X.unif[nroy.ix.seasia, ], panel = dfunc.up, gap = 0, upper.panel = NULL)
+pairs(rbind(X.unif[nroy.ix.seasia, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
 
 pred.unif.seasia.bc = predict(fit.tropics, newdata = X.unif.seasia, type = 'UK')
@@ -626,7 +832,7 @@ seasia.impl.bc = impl(em = pred.unif.seasia.bc$mean, em.sd = pred.unif.seasia.bc
 nroy.ix.seasia.bc = which(seasia.impl.bc < thres)
 
 pdf(width = 7, height = 7, file = 'graphics/best_inputs_seasia_bc.pdf')
-pairs(X.unif[nroy.ix.seasia.bc, ], panel = dfunc.up, gap = 0, upper.panel = NULL)
+pairs(rbind(X.unif[nroy.ix.seasia.bc, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
 
 # Now Congo
@@ -638,7 +844,7 @@ congo.impl = impl(em = pred.unif.congo$mean, em.sd = pred.unif.congo$sd,
 nroy.ix.congo = which(congo.impl < thres)
 
 pdf(width = 7, height = 7, file = 'graphics/best_inputs_congo.pdf')
-pairs(X.unif[nroy.ix.congo, ], panel = dfunc.up, gap = 0, upper.panel = NULL)
+pairs(rbind(X.unif[nroy.ix.congo, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
 
 pred.unif.congo.bc = predict(fit.tropics, newdata = X.unif.congo, type = 'UK')
@@ -649,8 +855,42 @@ congo.impl.bc = impl(em = pred.unif.congo.bc$mean, em.sd = pred.unif.congo.bc$sd
 nroy.ix.congo.bc = which(congo.impl.bc < thres)
 
 pdf(width = 7, height = 7, file = 'graphics/best_inputs_congo_bc.pdf')
-pairs(X.unif[nroy.ix.congo.bc, ], panel = dfunc.up, gap = 0, upper.panel = NULL)
+pairs(rbind(X.unif[nroy.ix.congo.bc, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
+
+# Implausibility at the default settings
+amaz.impl.default = impl(em = standard.amazon$mean, em.sd = standard.amazon$sd,
+                            disc = disc, obs = obs_amazon,
+                            disc.sd = disc.sd,
+                            obs.sd = obs.sd)
+
+seasia.impl.default = impl(em = standard.seasia$mean, em.sd = standard.seasia$sd,
+                         disc = disc, obs = obs_seasia,
+                         disc.sd = disc.sd,
+                         obs.sd = obs.sd)
+
+congo.impl.default = impl(em = standard.congo$mean, em.sd = standard.congo$sd,
+                           disc = disc, obs = obs_congo,
+                           disc.sd = disc.sd,
+                           obs.sd = obs.sd)
+
+
+# Bias corrected Implausibility
+amaz.impl.bc.default = impl(em = pred.amaz.bc$mean, em.sd = pred.amaz.bc$sd,
+                      disc = disc, obs = obs_amazon,
+                      disc.sd = disc.sd,
+                     obs.sd = obs.sd)
+
+seasia.impl.bc.default = impl(em = pred.seasia.bc$mean, em.sd = pred.seasia.bc$sd,
+                            disc = disc, obs = obs_seasia,
+                            disc.sd = disc.sd,
+                            obs.sd = obs.sd)
+
+congo.impl.bc.default = impl(em = pred.congo.bc$mean, em.sd = pred.congo.bc$sd,
+                              disc = disc, obs = obs_congo,
+                              disc.sd = disc.sd,
+                              obs.sd = obs.sd)
+
 
 
 # what part of parameter space matches everything?
@@ -663,15 +903,95 @@ nroy.nobc.ix = intersect(intersect(nroy.ix.amaz,nroy.ix.seasia ), nroy.ix.congo)
 (length(nroy.bc.ix)/n) *100 # 28% of space is NROY with bias correction.
 
 pdf(width = 7, height = 7, file = 'graphics/best_inputs_all_bc.pdf')
-pairs(X.unif[nroy.bc.ix, ], panel = dfunc.up, gap = 0, upper.panel = NULL)
+pairs(rbind(X.unif[nroy.bc.ix, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
 
 pdf(width = 7, height = 7, file = 'graphics/best_inputs_all_nobc.pdf')
-pairs(X.unif[nroy.nobc.ix, ], panel = dfunc.up, gap = 0, upper.panel = NULL)
+pairs(rbind(X.unif[nroy.nobc.ix, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
+dev.off()
+
+test = rbind(X.unif[nroy.bc.ix, ], X.stan.norm)
+
+pdf(width = 7, height = 7, file = 'graphics/best_inputs_all_bc_default.pdf')
+pairs(test, panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
+dev.off()
+
+# Proportion of NROY space that is "shared"
+prop.shared = function(a,b){
+  out = length(intersect(a,b)) / length(union(a,b))
+  out
+}
+
+a = nroy.ix.amaz.bc
+b = nroy.ix.seasia.bc
+d = nroy.ix.congo.bc
+
+# bias corrected "proportion of shared space"
+length(intersect(d,intersect(a,b))) / length(union(d,union(a,b)))
+
+# as a proportion of total space:
+length(intersect(d,intersect(a,b))) / n 
+
+
+# non bias corrected "proportion of shared space"
+a = nroy.ix.amaz
+b = nroy.ix.seasia
+d = nroy.ix.congo
+
+length(intersect(d,intersect(a,b))) / length(union(d,union(a,b)))
+# as a proportion of total space:
+length(intersect(d,intersect(a,b))) / n 
+
+# shared space with each pair of forests
+# Bias-corrected
+prop.shared(nroy.ix.amaz.bc, nroy.ix.seasia.bc)
+prop.shared(nroy.ix.amaz.bc, nroy.ix.congo.bc)
+prop.shared(nroy.ix.seasia.bc, nroy.ix.congo.bc)
+
+# Non bias-corrected
+prop.shared(nroy.ix.amaz, nroy.ix.seasia)
+prop.shared(nroy.ix.amaz, nroy.ix.congo)
+prop.shared(nroy.ix.seasia, nroy.ix.congo)
+
+# Multicriteria optimisation?
+# what does the parameter space with the lowest absolute error look like?
+# the 'best' region?
+hist(pred.unif.congo.bc$mean - obs_congo)
+hist(pred.unif.seasia.bc$mean - obs_seasia)
+hist(pred.unif.amaz.bc$mean - obs_amazon)
+
+# Where is the error smallest? 
+
+congo.ae = abs(pred.unif.congo.bc$mean - obs_congo)
+seasia.ae = abs(pred.unif.seasia.bc$mean - obs_seasia)
+amaz.ae = abs(pred.unif.amaz.bc$mean - obs_seasia)
+
+total.ae = congo.ae + seasia.ae + amaz.ae
+
+best.ix = which(total.ae < 0.25)
+
+pdf(width = 7, height = 7, file = 'graphics/smallest_ae_inputs_all_bc_default.pdf')
+pairs(rbind(X.unif[best.ix, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
+dev.off()
+
+# what does the output at those points look like?
+# Even with a bias correction, the emulator indicates that 
+# we underestimate congo and amazon, and overestimate SE Asia
+
+pdf(width = 7, height = 7, file = 'graphics/smallest_ae_hists.pdf')
+par(mfrow = c(3,1))
+xlim = c(0,1)
+hist(pred.unif.congo.bc$mean[best.ix], xlim = xlim)
+rug(obs_congo, col = 'red', lwd = 3)
+hist(pred.unif.seasia.bc$mean[best.ix], xlim = xlim)
+rug(obs_seasia, col = 'red', lwd = 3)
+hist(pred.unif.amaz.bc$mean[best.ix], xlim = xlim)
+rug(obs_amazon, col = 'red', lwd = 3)
 dev.off()
 
 
-# What fraction of parameter space is NROY for all three observations? 
+
+
 
 
 # --------------------------------------------------------------
