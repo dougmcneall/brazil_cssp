@@ -622,6 +622,36 @@ ix.kept2 = which(y.unif[,'cs_gb'] > 750 & y.unif[,'cs_gb'] < 3000 &
 X.kept2 = X.unif[ix.kept2, ]
 (nrow(X.kept2) / nsamp.unif) * 100
 
+# Histograms of the constraint outputs
+#note: always pass alpha on the 0-255 scale
+makeTransparent<-function(someColor, alpha=100)
+{
+  newColor<-col2rgb(someColor)
+  apply(newColor, 2, function(curcoldata){rgb(red=curcoldata[1], green=curcoldata[2],
+                                              blue=curcoldata[3],alpha=alpha, maxColorValue=255)})
+}
+
+hcol = 'grey'
+lcol = 'black'
+pdf(file = 'graphics/ppe_ii/constraint_hists.pdf', width = 8, height = 8)
+par(mfrow = c(3,2), fg = 'white', las = 1)
+
+hist(dat.norm[,'runoff'], col = hcol, main = 'Runoff', xlab = 'Sv')
+polygon(x = c(0.5, 100, 100, 0.5), y = c(0, 0, 1000, 1000), col = makeTransparent('tomato2'))
+hist(dat.norm[,'nbp'], col = hcol, main = 'NBP', xlab = 'GtC/year')
+polygon(x = c(-10, 100, 100, -10), y = c(0, 0, 1000, 1000), col = makeTransparent('tomato2'))
+hist(dat.norm[,'cs_gb'], col = hcol, main = 'Soil Carbon', xlab = 'GtC')
+polygon(x = c(750, 3000, 3000, 750), y = c(0, 0, 1000, 1000), col = makeTransparent('tomato2'))
+
+hist(dat.norm[,'cv'], col = hcol, main = 'Vegetation Carbon', xlab = 'GtC')
+polygon(x = c(300, 800, 800, 300), y = c(0, 0, 1000, 1000), col = makeTransparent('tomato2'))
+hist(dat.norm[,'npp_n_gb'], col = hcol , main = 'NPP', xlab = 'GtC/year')
+polygon(x = c(35, 80, 80, 35), y = c(0, 0, 1000, 1000), col = makeTransparent('tomato2'))
+hist(bl_frac_modern, col = hcol, main = 'Amazon Forest Fraction', xlab = 'fraction')
+polygon(x = c(0.5, 1, 1, 0.5), y = c(0, 0, 1000, 1000), col = makeTransparent('tomato2'))
+dev.off()
+
+
 
 dev.new(width = 7, height = 7)
 par(mfrow = c(2,3))

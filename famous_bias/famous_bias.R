@@ -11,7 +11,9 @@ library(RColorBrewer)
 library(MASS)
 library(fields)
 library(parallel)
+library(viridisLite)
 
+setwd('famous_bias')
 load('famous_forest_fraction.RData')
 load('famous_agg.RData')
 
@@ -177,8 +179,30 @@ true.loo = function(X,y){
 
 true.loo.all = true.loo(X = X_tropics_norm, y = Y_tropics)
 
+true.loo.amazon = true.loo (X = X.norm, y = famous_agg$AMAZ_MOD_FRAC)
+true.loo.seasia = true.loo (X = X.norm, y = famous_agg$SEASIA_MOD_FRAC)
+true.loo.congo = true.loo (X = X.norm, y = famous_agg$CONGO_MOD_FRAC)
+
+
+mean(abs(true.loo.amazon$mean - famous_agg$AMAZ_MOD_FRAC))
+mean(abs(true.loo.seasia$mean - famous_agg$SEASIA_MOD_FRAC))
+mean(abs(true.loo.congo$mean - famous_agg$CONGO_MOD_FRAC))
+
+# Mean error when not using T/P emulator
+regular.mae = mean(abs(c(true.loo.amazon$mean, true.loo.seasia$mean, true.loo.congo$mean) - Y_tropics))
+regular.mae
+
+aug.mae = mean(abs(true.loo.all$mean - Y_tropics))
+
+aug.mae / regular.mae
+
 # Mean absolute error is about 0.03 or 3%
 print(paste('With T/P mean absolute cross validation error = ', mean(abs(true.loo.all$mean - Y_tropics))))
+mean(abs(true.loo.all$mean[1:100] - famous_agg$AMAZ_MOD_FRAC))
+mean(abs(true.loo.all$mean[101:200] - famous_agg$SEASIA_MOD_FRAC))
+mean(abs(true.loo.all$mean[201:300] - famous_agg$CONGO_MOD_FRAC))
+
+
 
 
 pdf(width = 6, height = 6, file = 'graphics/true_loo_all.pdf' )
@@ -256,7 +280,10 @@ qqnorm(true.loo.err.norm)
 abline(0,1)
 dev.off()
 
+# ------------------------------------------------------------------
+# Bias correction section
 
+# ------------------------------------------------------------------
 # normalize amazon obs
 tp.amaz.norm <- normalize(
   matrix(c(temps_obs$AMAZ_OBS_TEMP+273.15, precips_obs$AMAZ_OBS_PRECIP),nrow=1),
@@ -407,6 +434,7 @@ bp.convert <- function(fastmodel){
 pdf(width = 7, height = 5, file = 'graphics/fast_barplot.pdf')
 par(las = 2, mar = c(9,5,3,2))
 barplot(bp.convert(fast.tell), col = c('skyblue', 'grey'), ylab = 'relative sensitivity')
+legend('topleft',legend = c('Main effect', 'Interactions'), fill = c('skyblue', 'grey') )
 dev.off()
 
 
@@ -506,8 +534,8 @@ points(tp.seasia.norm, col = 'black', pch = 22, cex = 2.5, bg = zcolor[302], lwd
 points(tp.congo.norm, col = 'black', pch = 24, cex = 2.5, bg = zcolor[303], lwd = 2)
 
 shadowtext(tp.amaz.norm[1],tp.amaz.norm[2], 'Amazon', pos = 4, font = 2,r =0.2)
-shadowtext(tp.congo.norm[1], tp.congo.norm[2], 'Central Africa', pos = 4, font = 2, r = 0.2)
 shadowtext(tp.seasia.norm[1], tp.seasia.norm[2], 'SE Asia', pos = 4, font = 2, r = 0.2)
+shadowtext(tp.congo.norm[1], tp.congo.norm[2], 'Central Africa', pos = 4, font = 2, r = 0.2)
 dev.off()
 
 # No emulated surface in this version
@@ -538,8 +566,8 @@ points(temps_obs$SEASIA_OBS_TEMP, precips_obs$SEASIA_OBS_PRECIP*pr, col = 'black
 points(temps_obs$CONGO_OBS_TEMP, precips_obs$CONGO_OBS_PRECIP*pr, col = 'black', pch = 24, cex = 2.5, bg = zcolor[303], lwd = 2)
 
 shadowtext(temps_obs$AMAZ_OBS_TEMP,precips_obs$AMAZ_OBS_PRECIP*pr, 'Amazon', pos = 4, font = 2,r =0.2)
-shadowtext(temps_obs$SEASIA_OBS_TEMP, precips_obs$SEASIA_OBS_PRECIP*pr, 'Central Africa', pos = 4, font = 2, r = 0.2)
-shadowtext(temps_obs$CONGO_OBS_TEMP, precips_obs$CONGO_OBS_PRECIP*pr, 'SE Asia', pos = 4, font = 2, r = 0.2)
+shadowtext(temps_obs$SEASIA_OBS_TEMP, precips_obs$SEASIA_OBS_PRECIP*pr, 'SE Asia', pos = 4, font = 2, r = 0.2)
+shadowtext(temps_obs$CONGO_OBS_TEMP, precips_obs$CONGO_OBS_PRECIP*pr, 'Central Africa', pos = 4, font = 2, r = 0.2)
 image.plot(z = Y_obs, legend.only = TRUE, col = viridis(9), horizontal = FALSE,  legend.args = list(text = "forest\nfraction",col="black", cex=1.2, side=3, line=1))
 dev.off()
 
@@ -971,6 +999,9 @@ pdf(width = 7, height = 7, file = 'graphics/smallest_ae_inputs_all_bc_default.pd
 pairs(rbind(X.unif[best.ix, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
 
+
+
+
 # what does the output at those points look like?
 # Even with a bias correction, the emulator indicates that 
 # we underestimate congo and amazon, and overestimate SE Asia
@@ -986,6 +1017,112 @@ hist(pred.unif.amaz.bc$mean[best.ix], xlim = xlim)
 rug(obs_amazon, col = 'red', lwd = 3)
 dev.off()
 
+
+
+# Which parts of input space are less implausible than the default parameters,
+# whenbias corrected to the correct temperature and precipitation?
+
+better.ix.amaz.bc = which(amaz.impl.bc < amaz.impl.bc.default)
+better.ix.seasia.bc = which(seasia.impl.bc < seasia.impl.bc.default)
+better.ix.congo.bc = which(congo.impl.bc < congo.impl.bc.default)
+
+better.bc.ix = intersect(intersect(better.ix.amaz.bc,better.ix.seasia.bc ), better.ix.congo.bc)
+
+# These are near the edge - might well be uncertainty driving.
+pdf(width = 7, height = 7, file = 'graphics/better_bc_default.pdf')
+pairs(rbind(X.unif[better.bc.ix, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
+dev.off()
+
+
+# Where do we do better than default parameters?
+pred.amaz.bc$mean - obs_amazon
+
+smaller.error.ix.amaz = which(abs(pred.unif.amaz.bc$mean - obs_amazon) < abs(pred.amaz.bc$mean - obs_amazon))
+smaller.error.ix.seasia = which(abs(pred.unif.seasia.bc$mean - obs_seasia) < abs(pred.seasia.bc$mean - obs_seasia))
+smaller.error.ix.congo = which(abs(pred.unif.congo.bc$mean - obs_congo) < abs(pred.congo.bc$mean - obs_congo))
+
+smaller.bc.ix = intersect(intersect(smaller.error.ix.amaz,smaller.error.ix.seasia ), smaller.error.ix.congo)
+
+(length(smaller.bc.ix) / n) * 100
+# These are near the edge - might well be uncertainty driving.
+pdf(width = 7, height = 7, file = 'graphics/smaller_error_bc_default.pdf')
+pairs(rbind(X.unif[smaller.bc.ix, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
+dev.off()
+
+pdf(width = 7, height = 7, file = 'graphics/smaller_ae_hists.pdf')
+par(mfrow = c(3,1))
+xlim = c(0,1)
+hist(pred.unif.congo.bc$mean[smaller.error.ix.congo], xlim = xlim)
+rug(obs_congo, col = 'red', lwd = 3)
+hist(pred.unif.seasia.bc$mean[smaller.error.ix.seasia], xlim = xlim)
+rug(obs_seasia, col = 'red', lwd = 3)
+hist(pred.unif.amaz.bc$mean[smaller.error.ix.amaz], xlim = xlim)
+rug(obs_amazon, col = 'red', lwd = 3)
+dev.off()
+
+
+# --------------------------------------------------------
+# What portion of Temperature and Precip space is NROY
+# for the default parameters?
+# --------------------------------------------------------
+
+# set at default parameters and vary T and P together
+# keep points with I < 3
+
+# sample temperature and precip
+
+n = 100000
+X.tp = samp.unif(n = n, mins = c(0,0), maxes = c(1,1))
+test = matrix()
+
+X.climate = cbind(matrix(rep(X.stan.norm,n), nrow = n, byrow = TRUE), X.tp)
+colnames(X.climate) = colnames(X_tropics_norm)
+
+pred.climate = predict(fit.tropics, newdata = X.climate, type = 'UK')
+
+impl.climate.amaz = impl(em = pred.climate$mean, em.sd = pred.climate$sd,
+     disc = disc, obs = obs_amazon,
+     disc.sd = disc.sd,
+     obs.sd = obs.sd)
+nroy.ix.climate.amaz = which(impl.climate.amaz < 3)
+
+# South East Asia
+impl.climate.seasia = impl(em = pred.climate$mean, em.sd = pred.climate$sd,
+                         disc = disc, obs = obs_seasia,
+                         disc.sd = disc.sd,
+                         obs.sd = obs.sd)
+nroy.ix.climate.seasia = which(impl.climate.seasia < 3)
+
+
+
+# Central Africa
+impl.climate.congo = impl(em = pred.climate$mean, em.sd = pred.climate$sd,
+                           disc = disc, obs = obs_congo,
+                           disc.sd = disc.sd,
+                           obs.sd = obs.sd)
+nroy.ix.climate.congo = which(impl.climate.congo < 3)
+
+pdf(width = 7, height = 8, file = 'graphics/nroy_climate.pdf')
+par(mfrow = c(2,2), las = 1)
+
+plot(X.climate[nroy.ix.climate.amaz, c(8,9)], type = 'n', xlab = 'Normalised Regional Mean Temperature',
+     ylab = 'Normalised Regional Mean  Precipitation',
+     main = 'Amazon')
+dfunc.up(X.climate[nroy.ix.climate.amaz, 8], X.climate[nroy.ix.climate.amaz, 9])
+points(tp.amaz.norm, col = 'red', pch = 19)
+
+plot(X.climate[nroy.ix.climate.seasia, c(8,9)], type = 'n', xlab = 'Normalised Regional Mean Temperature',
+     ylab = 'Normalised Regional Mean  Precipitation',
+     main = 'South East Asia')
+dfunc.up(X.climate[nroy.ix.climate.seasia, 8], X.climate[nroy.ix.climate.seasia, 9])
+points(tp.seasia.norm, col = 'red', pch = 19)
+
+plot(X.climate[nroy.ix.climate.congo, c(8,9)], type = 'n', xlab = 'Normalised Regional Mean Temperature',
+     ylab = 'Normalised Regional Mean Precipitation',
+     main = 'Central Africa')
+dfunc.up(X.climate[nroy.ix.climate.congo, 8], X.climate[nroy.ix.climate.congo, 9])
+points(tp.congo.norm, col = 'red', pch = 19)
+dev.off()
 
 
 
@@ -1100,5 +1237,154 @@ fit.resid.seasia = km(~., design = X.norm, response=fit.tp.resid[101:200])
 fit.resid.congo = km(~., design = X.norm, response=fit.tp.resid[201:300])
 
 plot(fit.resid.congo)
+
+# ------------------------------------------------------------------
+# What are the impacts of forest fraction on temperature and precip?
+# ------------------------------------------------------------------
+
+# Flip the 'augmented emulator' concept around. If temperature and precip can
+# be added to the input parameters to predict forest fraction, then surely the inverse is
+# true? Use input parameters and forest fraction to predict changes in temperature and precip
+
+# Doesn't work!
+
+X.ff.amazon = cbind(X,famous_agg$AMAZ_MOD_FRAC)
+colnames(X.ff.amazon) = c(colnames(X), 'MOD_FRAC')
+X.ff.seasia = cbind(X,famous_agg$SEASIA_MOD_FRAC)
+colnames(X.ff.seasia) = c(colnames(X), 'MOD_FRAC')
+X.ff.congo = cbind(X,famous_agg$CONGO_MOD_FRAC)
+colnames(X.ff.congo) = c(colnames(X), 'MOD_FRAC')
+
+X.ff.tropics = rbind(X.ff.amazon, X.ff.seasia, X.ff.congo)
+
+X.ff.tropics.norm = normalize(X.ff.tropics)
+
+precip.tropics = c(famous_agg$AMAZ_MOD_PRECIP, famous_agg$SEASIA_MOD_PRECIP, famous_agg$CONGO_MOD_PRECIP)
+temp.tropics = c(famous_agg$AMAZ_MOD_TEMP, famous_agg$SEASIA_MOD_TEMP,famous_agg$CONGO_MOD_TEMP )
+  
+
+tropics.temp.ff.fit = km(~., design = X.ff.tropics.norm, response=temp.tropics)
+tropics.precip.ff.fit = km(~., design = X.ff.tropics.norm, response=precip.tropics)
+
+
+# Rich said that plotting maps of the tropical forests might be really
+# useful for deciding if the forests are in the right places.
+
+remap.famous = function(dat,longs,lats, shift = FALSE){
+  # reshape a map in vector form so that fields() package function image.plot() 
+  #  (for example) will plot it correctly
+  mat = matrix(dat, nrow=length(longs), ncol=length(lats))[ ,length(lats):1]
+  if(shift){
+    block1.ix = which(longs <= shift)
+    block2.ix = which(longs > shift)
+    mat.shift = rbind(mat[ block2.ix, ], mat[block1.ix, ]) 
+    out = mat.shift
+  }
+  else{
+    out = mat
+  }
+  out
+}
+
+remap.tropics = function(dat,lats, upper, lower){
+  ix = which(lats <= upper & lats >=lower)
+  out = dat[,ix]
+}
+
+blockswap = function(dat, longs,lats, shift){
+  # takes a map like matrix already in the right format
+  # for mapping in image.plot, and plots it from a different
+  # longitude
+  block1.ix = which(longs <= shift)
+  block2.ix = which(longs > shift)
+  mat.shift = rbind(dat[ block2.ix, ], dat[block1.ix, ]) 
+  out = mat.shift
+}
+
+reset = function() {
+  par(mfrow=c(1, 1), oma=rep(0, 4), mar=rep(0, 4), new=TRUE)
+  plot(0:1, 0:1, type="n", xlab="", ylab="", axes=FALSE)
+}
+
+#reset()
+#legend("top", legend=c("A", "B"), fill=c("red", "blue"), ncol=2, bty="n")
+
+
+
+famous.example = blockswap(remap.famous(bl.frac.ens[1,], longs = longs, lats = lats),
+                           longs = longs, lats = lats, shift = 180)
+
+# HadGEM2 family resolution
+#lats = 1.25 * 1.875
+obslats = seq(from = -90, to = 90, length.out =  dim(bl.obs.map)[2])
+obslongs = seq(from = 0, to = (360-1.875), by = 1.875)
+
+bl.obs.dat = read.table('forest_fraction_obs_map_v2.txt', na.strings = '-1.073741824000000000e+09')
+bl.obs.map = blockswap(t(as.matrix(bl.obs.dat)), longs = obslongs, lats = obslats, shift = 180)
+
+bl.dat.regrid = read.table('forest_fraction_obs_map_regrid_v2.txt', na.strings = '-1.073741824000000000e+09')
+bl.obs.map.regrid = blockswap(t(as.matrix(bl.dat.regrid)), longs = longs, lats = lats, shift = 180)
+
+
+pdf(width = 9, height = 8, file = 'graphics/map_comparison.pdf' )
+par(bg = 'lightgrey', mfrow = c(2,2), oma = c(4,0,0,0))
+image(bl.obs.map, col = yg, zlim = c(0,1),  axes = FALSE, main = 'Observations')
+image(famous.example, col = yg, zlim = c(0,1),  axes = FALSE, main = 'FAMOUS ensemble member 1' )
+image(bl.obs.map.regrid, col = yg, zlim = c(0,1),  axes = FALSE, main = 'Regridded observations')
+reset()
+par(oma = c(1,0,0,0))
+image.plot(anom, zlim = c(0,1), legend.only = TRUE, horizontal = TRUE, 
+           col = yg, legend.shrink = 0.6, legend.width = 0.7,
+           legend.lab = 'Broadleaf forest fraction')
+dev.off()
+
+blmeans = rep(NA, 100)
+for(i in 1:100){
+  blmeans[i] = mean(bl.frac.ens[i,], na.rm = TRUE)
+}
+
+bl.ix = order(blmeans)
+
+pdf(file = 'graphics/tropics_maps_yg.pdf', width = 8, height = 8)
+par(mfrow = c(13,8), mar = c(0.2, 0.2, 0.2, 0.2), bg = 'lightgrey',
+    oma = c(9,0.2,0.2,0.2))
+
+for(i in bl.ix){
+  
+  map = remap.famous(bl.frac.ens[i,], longs = longs, lats = lats, shift = 180)
+  test.trop = remap.tropics(map,lats = rev(lats), upper = 60, lower = -60)
+  image(test.trop, axes = FALSE, col = yg, zlim = c(0,1))
+  
+}
+
+reset()
+par(oma = c(1,0,0,0))
+image.plot(anom, zlim = c(0,1), legend.only = TRUE, horizontal = TRUE, 
+           col = yg, legend.shrink = 0.6, legend.width = 0.7,
+           legend.lab = 'Broadleaf Forest fraction')
+dev.off()
+
+
+pdf(file = 'graphics/tropics_anom_maps.pdf', width = 8, height = 8)
+par(mfrow = c(13,8), mar = c(0.2, 0.2, 0.2, 0.2), bg = 'lightgrey',
+    oma = c(9,0.2,0.2,0.2))
+
+for(i in bl.ix){
+  
+  bl = remap.famous(bl.frac.ens[i,], longs = longs, lats = lats, shift = 180)
+  anom = bl - bl.obs.map.regrid
+  image(remap.tropics(anom, lats = rev(lats), upper = 60, lower = -60), axes = FALSE, col = rev(byr), zlim = c(-1,1))
+  
+}
+
+reset()
+par(oma = c(1,0,0,0))
+image.plot(anom, zlim = c(-1,1), legend.only = TRUE, horizontal = TRUE, 
+           col = rev(byr), legend.shrink = 0.6, legend.width = 0.7,
+           legend.lab = 'Broadleaf forest fraction anomaly')
+dev.off()
+
+
+
 
 
