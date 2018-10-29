@@ -87,7 +87,7 @@ dfunc.up.truth = function(x,y, ...){
   # function for plotting 2d kernel density estimates in pairs() plot.
   kde <- kde2d(xdash,ydash)
   image(kde, col = br, add = TRUE)
-  points(xtrue, ytrue, pch =19, col = 'red')
+  points(xtrue, ytrue, pch =21, col = 'black', bg = 'red', cex = 1.5)
 }
 
 shadowtext <- function(x, y=NULL, labels, 
@@ -505,38 +505,42 @@ dev.off()
 
 plot(X_tropics[, 8], X_tropics[, 9], col = 'black', bg = zcolor, pch = 21, cex = 2)
 
+# ----------------------------------------------------------------------
+# This plot Deprecated in favour of a quilt plot (below) for the paper 
+# ----------------------------------------------------------------------
+
 # Normalize the colours to the background
 # the first 300 points are Y_tropics
-
-allz = c(Y_tropics,obs_amazon,obs_seasia, obs_congo, plausible.amazon.bc$pred$mean)
-zcolor = col3rd(n=9, pal=viridis(11), z = allz) 
-
-pdf(file = 'graphics/emulated_fraction_vs_temp_precip_pcolcor.pdf',width = 7, height = 7)
-par(las = 1)
-quilt.plot(plausible.amazon.bc$X.unif[,8],
-           plausible.amazon.bc$X.unif[, 9], plausible.amazon.bc$pred$mean,
-           col = viridis(7),
-           xlab = 'Normalised regional temperature', 
-           ylab = 'Normalised regional precipitation', 
-           legend.args = list(text = "forest\nfraction",
-                              col="black", cex=1.2, side=3, line=1))
-cex = 1.4
-lwd = 1.5
-points(X_tropics_norm[1:100,8], X_tropics_norm[1:100,9], 
-       col = 'black', bg = zcolor[1:100], pch = 21, cex = cex, lwd = lwd)
-points(X_tropics_norm[101:200,8], X_tropics_norm[101:200,9], 
-       col = 'black', bg = zcolor[101:200], pch = 22, cex = cex, lwd = lwd)
-points(X_tropics_norm[201:300,8], X_tropics_norm[201:300,9], 
-       col = 'black', bg = zcolor[201:300], pch = 24, cex = cex, lwd = lwd)
-
-points(tp.amaz.norm, col = 'black', pch = 21, cex = 2.5, bg = zcolor[301], lwd = 2)
-points(tp.seasia.norm, col = 'black', pch = 22, cex = 2.5, bg = zcolor[302], lwd = 2)
-points(tp.congo.norm, col = 'black', pch = 24, cex = 2.5, bg = zcolor[303], lwd = 2)
-
-shadowtext(tp.amaz.norm[1],tp.amaz.norm[2], 'Amazon', pos = 4, font = 2,r =0.2)
-shadowtext(tp.seasia.norm[1], tp.seasia.norm[2], 'SE Asia', pos = 4, font = 2, r = 0.2)
-shadowtext(tp.congo.norm[1], tp.congo.norm[2], 'Central Africa', pos = 4, font = 2, r = 0.2)
-dev.off()
+# ncols = 7
+# allz = c(Y_tropics,obs_amazon,obs_seasia, obs_congo, plausible.amazon.bc$pred$mean)
+# zcolor = col3rd(n=ncols, pal=viridis(ncols), z = allz) 
+# 
+# pdf(file = 'graphics/emulated_fraction_vs_temp_precip_pcolcor.pdf',width = 7, height = 7)
+# par(las = 1)
+# quilt.plot(plausible.amazon.bc$X.unif[,8],
+#            plausible.amazon.bc$X.unif[, 9], plausible.amazon.bc$pred$mean,
+#            col = viridis(ncols),
+#            xlab = 'Normalised regional temperature', 
+#            ylab = 'Normalised regional precipitation', 
+#            legend.args = list(text = "forest\nfraction",
+#                               col="black", cex=1.2, side=3, line=1))
+# cex = 1.4
+# lwd = 1.5
+# points(X_tropics_norm[1:100,8], X_tropics_norm[1:100,9], 
+#        col = 'black', bg = zcolor[1:100], pch = 21, cex = cex, lwd = lwd)
+# points(X_tropics_norm[101:200,8], X_tropics_norm[101:200,9], 
+#        col = 'black', bg = zcolor[101:200], pch = 22, cex = cex, lwd = lwd)
+# points(X_tropics_norm[201:300,8], X_tropics_norm[201:300,9], 
+#        col = 'black', bg = zcolor[201:300], pch = 24, cex = cex, lwd = lwd)
+# 
+# points(tp.amaz.norm, col = 'black', pch = 21, cex = 2.5, bg = zcolor[301], lwd = 2)
+# points(tp.seasia.norm, col = 'black', pch = 22, cex = 2.5, bg = zcolor[302], lwd = 2)
+# points(tp.congo.norm, col = 'black', pch = 24, cex = 2.5, bg = zcolor[303], lwd = 2)
+# 
+# shadowtext(tp.amaz.norm[1],tp.amaz.norm[2], 'Amazon', pos = 4, font = 2,r =0.2)
+# shadowtext(tp.seasia.norm[1], tp.seasia.norm[2], 'SE Asia', pos = 4, font = 2, r = 0.2)
+# shadowtext(tp.congo.norm[1], tp.congo.norm[2], 'Central Africa', pos = 4, font = 2, r = 0.2)
+# dev.off()
 
 # No emulated surface in this version
 
@@ -568,6 +572,9 @@ points(temps_obs$CONGO_OBS_TEMP, precips_obs$CONGO_OBS_PRECIP*pr, col = 'black',
 shadowtext(temps_obs$AMAZ_OBS_TEMP,precips_obs$AMAZ_OBS_PRECIP*pr, 'Amazon', pos = 4, font = 2,r =0.2)
 shadowtext(temps_obs$SEASIA_OBS_TEMP, precips_obs$SEASIA_OBS_PRECIP*pr, 'SE Asia', pos = 4, font = 2, r = 0.2)
 shadowtext(temps_obs$CONGO_OBS_TEMP, precips_obs$CONGO_OBS_PRECIP*pr, 'Central Africa', pos = 4, font = 2, r = 0.2)
+legend('topleft', pch = c(21,22,24,24,24), pt.bg = c(NA,NA,NA,NA,viridis(9)[9]), legend = c('Amazon', 'SE Asia', 'Central Africa', 'large points are observations', 'fill colour is forest fraction'),
+       pt.cex = c(1,1,1,1.4,1.4), bty = 'n')
+
 image.plot(z = Y_obs, legend.only = TRUE, col = viridis(9), horizontal = FALSE,  legend.args = list(text = "forest\nfraction",col="black", cex=1.2, side=3, line=1))
 dev.off()
 
@@ -595,13 +602,14 @@ dev.off()
 
 # Can use quilt plot as long as the number of points in either direction matches the
 # data.
+ncol = 11
 allz = c(Y_tropics,obs_amazon,obs_seasia, obs_congo, y.taat.tp$mean)
-zcolor = col3rd(n=9, pal=viridis(11), z = allz) 
+zcolor = col3rd(n=ncol, pal=viridis(ncol), z = allz) 
 
 pdf(width = 7, height = 7, file = 'graphics/taat_temp_precip_quilt.pdf')
 par(las = 1)
 quilt.plot(X.taat.tp[,8], X.taat.tp[,9], y.taat.tp$mean, 
-      col = viridis(11), nx = 21, ny = 21,
+      col = viridis(ncol), nx = 21, ny = 21,
       xlab = 'Normalised Regional Mean Temperature', ylab = 'Normalised Regional Mean Precipitation')
 
 cex = 1.4
@@ -1027,6 +1035,7 @@ better.ix.seasia.bc = which(seasia.impl.bc < seasia.impl.bc.default)
 better.ix.congo.bc = which(congo.impl.bc < congo.impl.bc.default)
 
 better.bc.ix = intersect(intersect(better.ix.amaz.bc,better.ix.seasia.bc ), better.ix.congo.bc)
+
 
 # These are near the edge - might well be uncertainty driving.
 pdf(width = 7, height = 7, file = 'graphics/better_bc_default.pdf')
