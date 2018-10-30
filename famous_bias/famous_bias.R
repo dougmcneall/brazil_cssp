@@ -152,11 +152,12 @@ tropics_fit = km(~., design = X_tropics_norm, response=Y_tropics)
 # Emulator diagnostics
 #
 # ----------------------------------------------------------------------------------
+run_diagnostics = FALSE # The diagnostics section is slow, so only set to TRUE if you have the time
+if(run_diagnostics){
 
 # Plot the emulator against the true leave-one-out prediction
 # This usually gives a very similar response to trend.reestim = TRUE
 # in leaveOneOut.km
-
 true.loo = function(X,y){
   out.mean = rep(NA, length(y))
   out.sd = rep(NA, length(y))
@@ -183,7 +184,6 @@ true.loo.amazon = true.loo (X = X.norm, y = famous_agg$AMAZ_MOD_FRAC)
 true.loo.seasia = true.loo (X = X.norm, y = famous_agg$SEASIA_MOD_FRAC)
 true.loo.congo = true.loo (X = X.norm, y = famous_agg$CONGO_MOD_FRAC)
 
-
 mean(abs(true.loo.amazon$mean - famous_agg$AMAZ_MOD_FRAC))
 mean(abs(true.loo.seasia$mean - famous_agg$SEASIA_MOD_FRAC))
 mean(abs(true.loo.congo$mean - famous_agg$CONGO_MOD_FRAC))
@@ -201,9 +201,6 @@ print(paste('With T/P mean absolute cross validation error = ', mean(abs(true.lo
 mean(abs(true.loo.all$mean[1:100] - famous_agg$AMAZ_MOD_FRAC))
 mean(abs(true.loo.all$mean[101:200] - famous_agg$SEASIA_MOD_FRAC))
 mean(abs(true.loo.all$mean[201:300] - famous_agg$CONGO_MOD_FRAC))
-
-
-
 
 pdf(width = 6, height = 6, file = 'graphics/true_loo_all.pdf' )
 xlim = c(-0.05, 1.05)
@@ -229,7 +226,6 @@ legend('top', legend = c('Amazon', 'Asia', 'Africa'),
        bty = 'n')
 dev.off()
 
-
 # Rank histograms for checking the uncertainty?
 # The principle behind the rank histogram is quite simple. 
 # Ideally, one property that is desired from an EF is reliable probabilities;
@@ -244,7 +240,6 @@ dev.off()
 # If the rank of the verification is tallied and the process repeated over many
 # independent sample points, a uniform histogram over the possible ranks should result.
 # From https://journals.ametsoc.org/doi/full/10.1175/1520-0493%282001%29129%3C0550%3AIORHFV%3E2.0.CO%3B2
-
 
 loo.rankhist = function(obs, pred.mean, pred.sd, n = 1000){
   # a version of the rank histogram     
@@ -280,10 +275,12 @@ qqnorm(true.loo.err.norm)
 abline(0,1)
 dev.off()
 
+}else{print('skipping diagnostics')}
+  
 # ------------------------------------------------------------------
 # Bias correction section
-
 # ------------------------------------------------------------------
+
 # normalize amazon obs
 tp.amaz.norm <- normalize(
   matrix(c(temps_obs$AMAZ_OBS_TEMP+273.15, precips_obs$AMAZ_OBS_PRECIP),nrow=1),
@@ -437,8 +434,6 @@ barplot(bp.convert(fast.tell), col = c('skyblue', 'grey'), ylab = 'relative sens
 legend('topleft',legend = c('Main effect', 'Interactions'), fill = c('skyblue', 'grey') )
 dev.off()
 
-
-
 # ------------------------------------------------------
 # Find the set of plausible inputs, when 
 # temperature and precip are included in the inputs
@@ -481,7 +476,6 @@ plausible.amazon.bc <- inputs.set(X = X_tropics_norm, y = Y_tropics,thres = 3,
                                   n = 100000,
                                   abt = FALSE)
 
-
 # Emulated surface of forest fraction given T & P
 #dev.new(width = 5, height =5)
 pdf(file = 'graphics/emulated_fraction_vs_temp_precip.pdf',width = 7, height = 7)
@@ -501,7 +495,6 @@ text(tp.amaz.norm, 'Amazon', pos = 4, font = 2)
 text(tp.congo.norm, 'Central Africa', pos = 4, font = 2)
 text(tp.seasia.norm, 'SE Asia', pos = 4, font = 2)
 dev.off()
-
 
 plot(X_tropics[, 8], X_tropics[, 9], col = 'black', bg = zcolor, pch = 21, cex = 2)
 
@@ -543,20 +536,16 @@ plot(X_tropics[, 8], X_tropics[, 9], col = 'black', bg = zcolor, pch = 21, cex =
 # dev.off()
 
 # No emulated surface in this version
-
-
 pdf(file = 'graphics/fraction_vs_temp_precip_pcolcor.pdf',width = 8, height = 7)
 par(las = 1, fg = 'black', mar = c(5,6,3,7))
 Y_obs = c(Y_tropics, obs_amazon, obs_seasia, obs_congo)
 Y_obs_ix = 1:300
 zcolor = col3rd(n=9, pal= viridis(9), z = Y_obs) 
-pr =1e5
+pr = 1e5 # precipitation scaling factor
 plot(X_tropics[, 8]-273.15, X_tropics[, 9]*pr, col = 'black', pch = 21, cex = 2, type = 'n',
      xlab = expression(paste('Regional temperature (', degree,'C)')),
      ylab = expression(paste('Regional Precipitation x',10^5,' kgm'^-2,'s'^-1))
 )
-                       
-
 
 cex = 1.4
 lwd = 1.5
@@ -630,9 +619,6 @@ shadowtext(tp.congo.norm[1], tp.congo.norm[2], 'Central Africa', pos = 4, font =
 shadowtext(tp.seasia.norm[1], tp.seasia.norm[2], 'SE Asia', pos = 4, font = 2, r = 0.2)
 
 dev.off()
-
-
-
 
 # ------------------------------------------------------------------------
 # We worked out the response surface for y = f(X, T, P).
@@ -779,7 +765,6 @@ text(c(1,1,1), c(3.25, 3, 2.75), labels = c('observed', 'default parameters', 'b
 dev.off()
 
 # Error for the standard runs when bias corrected and not
-
 print(paste('amazon default error =', standard.amazon$mean - obs_amazon))
 print(paste('SE Asia default error =', standard.seasia$mean - obs_seasia))
 print(paste('C Africa default error =', standard.congo$mean - obs_congo))
@@ -965,7 +950,6 @@ length(intersect(d,intersect(a,b))) / length(union(d,union(a,b)))
 # as a proportion of total space:
 length(intersect(d,intersect(a,b))) / n 
 
-
 # non bias corrected "proportion of shared space"
 a = nroy.ix.amaz
 b = nroy.ix.seasia
@@ -1007,9 +991,6 @@ pdf(width = 7, height = 7, file = 'graphics/smallest_ae_inputs_all_bc_default.pd
 pairs(rbind(X.unif[best.ix, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
 
-
-
-
 # what does the output at those points look like?
 # Even with a bias correction, the emulator indicates that 
 # we underestimate congo and amazon, and overestimate SE Asia
@@ -1025,8 +1006,6 @@ hist(pred.unif.amaz.bc$mean[best.ix], xlim = xlim)
 rug(obs_amazon, col = 'red', lwd = 3)
 dev.off()
 
-
-
 # Which parts of input space are less implausible than the default parameters,
 # whenbias corrected to the correct temperature and precipitation?
 
@@ -1036,12 +1015,10 @@ better.ix.congo.bc = which(congo.impl.bc < congo.impl.bc.default)
 
 better.bc.ix = intersect(intersect(better.ix.amaz.bc,better.ix.seasia.bc ), better.ix.congo.bc)
 
-
 # These are near the edge - might well be uncertainty driving.
 pdf(width = 7, height = 7, file = 'graphics/better_bc_default.pdf')
 pairs(rbind(X.unif[better.bc.ix, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
-
 
 # Where do we do better than default parameters?
 pred.amaz.bc$mean - obs_amazon
@@ -1102,8 +1079,6 @@ impl.climate.seasia = impl(em = pred.climate$mean, em.sd = pred.climate$sd,
                          obs.sd = obs.sd)
 nroy.ix.climate.seasia = which(impl.climate.seasia < 3)
 
-
-
 # Central Africa
 impl.climate.congo = impl(em = pred.climate$mean, em.sd = pred.climate$sd,
                            disc = disc, obs = obs_congo,
@@ -1143,6 +1118,7 @@ dev.off()
 # fit the data?
 # -------------------------------------------------------------
 
+if(run_diagnostics){
 # Produce genuine LOO for all these, put them together and compare with 
 # true.loo
 fit.x.amaz = km(~., design = X.norm, response=famous_agg$AMAZ_MOD_FRAC)
@@ -1157,10 +1133,8 @@ true.loo.congo = true.loo(X = X.norm, y = famous_agg$CONGO_MOD_FRAC)
 true.loo.X.mean = c(true.loo.amaz$mean, true.loo.seasia$mean, true.loo.congo$mean)
 true.loo.X.sd = c(true.loo.amaz$sd, true.loo.seasia$sd, true.loo.congo$sd)
 
-
 # Mean absolute error is about 0.06 or 6%
 print(paste('Just X mean absolute cross validation error =', mean(abs(true.loo.X.mean - Y_tropics))))
-
 
 plot(Y_tropics, true.loo.X.mean)
 pdf(width = 6, height = 6, file = 'graphics/true_loo_X.pdf' )
@@ -1190,9 +1164,6 @@ dev.off()
 
 # Mean absolute error is about 0.03 or 3%
 print(paste('mean absolute cross validation error = ', mean(abs(true.loo.all$mean - Y_tropics))))
-
-
-
 
 # This is much quicker than adding them all together!
 true.loo.tp.amaz = true.loo(X = X_tropics_norm[1:100, 8:9], y = famous_agg$AMAZ_MOD_FRAC)
@@ -1247,6 +1218,8 @@ fit.resid.congo = km(~., design = X.norm, response=fit.tp.resid[201:300])
 
 plot(fit.resid.congo)
 
+}else{print('skipping diagnostics')}
+
 # ------------------------------------------------------------------
 # What are the impacts of forest fraction on temperature and precip?
 # ------------------------------------------------------------------
@@ -1257,27 +1230,29 @@ plot(fit.resid.congo)
 
 # Doesn't work!
 
-X.ff.amazon = cbind(X,famous_agg$AMAZ_MOD_FRAC)
-colnames(X.ff.amazon) = c(colnames(X), 'MOD_FRAC')
-X.ff.seasia = cbind(X,famous_agg$SEASIA_MOD_FRAC)
-colnames(X.ff.seasia) = c(colnames(X), 'MOD_FRAC')
-X.ff.congo = cbind(X,famous_agg$CONGO_MOD_FRAC)
-colnames(X.ff.congo) = c(colnames(X), 'MOD_FRAC')
+# X.ff.amazon = cbind(X,famous_agg$AMAZ_MOD_FRAC)
+# colnames(X.ff.amazon) = c(colnames(X), 'MOD_FRAC')
+# X.ff.seasia = cbind(X,famous_agg$SEASIA_MOD_FRAC)
+# colnames(X.ff.seasia) = c(colnames(X), 'MOD_FRAC')
+# X.ff.congo = cbind(X,famous_agg$CONGO_MOD_FRAC)
+# colnames(X.ff.congo) = c(colnames(X), 'MOD_FRAC')
+# 
+# X.ff.tropics = rbind(X.ff.amazon, X.ff.seasia, X.ff.congo)
+# 
+# X.ff.tropics.norm = normalize(X.ff.tropics)
+# 
+# precip.tropics = c(famous_agg$AMAZ_MOD_PRECIP, famous_agg$SEASIA_MOD_PRECIP, famous_agg$CONGO_MOD_PRECIP)
+# temp.tropics = c(famous_agg$AMAZ_MOD_TEMP, famous_agg$SEASIA_MOD_TEMP,famous_agg$CONGO_MOD_TEMP )
+#   
+# 
+# tropics.temp.ff.fit = km(~., design = X.ff.tropics.norm, response=temp.tropics)
+# tropics.precip.ff.fit = km(~., design = X.ff.tropics.norm, response=precip.tropics)
 
-X.ff.tropics = rbind(X.ff.amazon, X.ff.seasia, X.ff.congo)
-
-X.ff.tropics.norm = normalize(X.ff.tropics)
-
-precip.tropics = c(famous_agg$AMAZ_MOD_PRECIP, famous_agg$SEASIA_MOD_PRECIP, famous_agg$CONGO_MOD_PRECIP)
-temp.tropics = c(famous_agg$AMAZ_MOD_TEMP, famous_agg$SEASIA_MOD_TEMP,famous_agg$CONGO_MOD_TEMP )
-  
-
-tropics.temp.ff.fit = km(~., design = X.ff.tropics.norm, response=temp.tropics)
-tropics.precip.ff.fit = km(~., design = X.ff.tropics.norm, response=precip.tropics)
 
 
-# Rich said that plotting maps of the tropical forests might be really
-# useful for deciding if the forests are in the right places.
+# ---------------------------------------------------------------------------
+# Plot maps of the tropical forests.
+# ---------------------------------------------------------------------------
 
 remap.famous = function(dat,longs,lats, shift = FALSE){
   # reshape a map in vector form so that fields() package function image.plot() 
@@ -1317,8 +1292,6 @@ reset = function() {
 
 #reset()
 #legend("top", legend=c("A", "B"), fill=c("red", "blue"), ncol=2, bty="n")
-
-
 
 famous.example = blockswap(remap.famous(bl.frac.ens[1,], longs = longs, lats = lats),
                            longs = longs, lats = lats, shift = 180)
