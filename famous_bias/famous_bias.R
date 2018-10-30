@@ -498,7 +498,7 @@ text(tp.congo.norm, 'Central Africa', pos = 4, font = 2)
 text(tp.seasia.norm, 'SE Asia', pos = 4, font = 2)
 dev.off()
 
-plot(X_tropics[, 8], X_tropics[, 9], col = 'black', bg = zcolor, pch = 21, cex = 2)
+#plot(X_tropics[, 8], X_tropics[, 9], col = 'black', bg = zcolor, pch = 21, cex = 2)
 
 # ----------------------------------------------------------------------
 # This plot Deprecated in favour of a quilt plot (below) for the paper 
@@ -1300,24 +1300,26 @@ famous.example = blockswap(remap.famous(bl.frac.ens[1,], longs = longs, lats = l
 
 # HadGEM2 family resolution
 #lats = 1.25 * 1.875
-obslats = seq(from = -90, to = 90, length.out =  dim(bl.obs.map)[2])
+bl.obs.dat = read.table('forest_fraction_obs_map_v2.txt', na.strings = '-1.073741824000000000e+09')
+
+obslats = seq(from = -90, to = 90, length.out =  dim(bl.obs.dat)[2])
 obslongs = seq(from = 0, to = (360-1.875), by = 1.875)
 
-bl.obs.dat = read.table('forest_fraction_obs_map_v2.txt', na.strings = '-1.073741824000000000e+09')
 bl.obs.map = blockswap(t(as.matrix(bl.obs.dat)), longs = obslongs, lats = obslats, shift = 180)
 
 bl.dat.regrid = read.table('forest_fraction_obs_map_regrid_v2.txt', na.strings = '-1.073741824000000000e+09')
 bl.obs.map.regrid = blockswap(t(as.matrix(bl.dat.regrid)), longs = longs, lats = lats, shift = 180)
 
 
+
 pdf(width = 9, height = 8, file = 'graphics/map_comparison.pdf' )
-par(bg = 'lightgrey', mfrow = c(2,2), oma = c(4,0,0,0))
+par(bg = 'lightgrey', mfrow = c(2,2), oma = c(4,0,0,0), mar = c(4,3,3,1))
 image(bl.obs.map, col = yg, zlim = c(0,1),  axes = FALSE, main = 'Observations')
 image(famous.example, col = yg, zlim = c(0,1),  axes = FALSE, main = 'FAMOUS ensemble member 1' )
 image(bl.obs.map.regrid, col = yg, zlim = c(0,1),  axes = FALSE, main = 'Regridded observations')
 reset()
 par(oma = c(1,0,0,0))
-image.plot(anom, zlim = c(0,1), legend.only = TRUE, horizontal = TRUE, 
+image.plot(bl.obs.map, zlim = c(0,1), legend.only = TRUE, horizontal = TRUE, 
            col = yg, legend.shrink = 0.6, legend.width = 0.7,
            legend.lab = 'Broadleaf forest fraction')
 dev.off()
@@ -1343,7 +1345,7 @@ for(i in bl.ix){
 
 reset()
 par(oma = c(1,0,0,0))
-image.plot(anom, zlim = c(0,1), legend.only = TRUE, horizontal = TRUE, 
+image.plot(test.trop, zlim = c(0,1), legend.only = TRUE, horizontal = TRUE, 
            col = yg, legend.shrink = 0.6, legend.width = 0.7,
            legend.lab = 'Broadleaf Forest fraction')
 dev.off()
