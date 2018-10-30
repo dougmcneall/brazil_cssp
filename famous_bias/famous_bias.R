@@ -13,7 +13,7 @@ library(fields)
 library(parallel)
 library(viridisLite)
 
-setwd('famous_bias')
+#setwd('famous_bias')
 load('famous_forest_fraction.RData')
 load('famous_agg.RData')
 
@@ -354,17 +354,19 @@ library(sensitivity)
 
 n = 21
 xlist = list(amaz.x, seasia.x, congo.x)
+ylist = list(famous_agg$AMAZ_MOD_FRAC, famous_agg$SEASIA_MOD_FRAC, famous_agg$CONGO_MOD_FRAC)
 ## build a matrix of OAT predictions
 oat.mean.mat = matrix(nrow = n*length(amaz.x), ncol = length(xlist))
 oat.sd.mat = matrix(nrow = n*length(amaz.x), ncol = length(xlist))
+fit.sens = km(~., design = X_tropics_norm, response = Y_tropics)
 
 for(i in 1:length(xlist)){
   
   X.oat = oaat.design(X_tropics_norm, n = n, hold = xlist[[i]])
   colnames(X.oat) = colnames(xlist[[i]])
-  pred = predict(fit.sens, newdata = X.oat, type = 'UK')
-  oat.mean.mat[, i ] = pred$mean
-  oat.sd.mat[, i ] = pred$sd
+  pred.sens = predict(fit.sens, newdata = X.oat, type = 'UK')
+  oat.mean.mat[, i ] = pred.sens$mean
+  oat.sd.mat[, i ] = pred.sens$sd
 }
 
 col.list = list(col.amaz, col.seasia, col.congo)
