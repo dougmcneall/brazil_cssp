@@ -152,7 +152,7 @@ tropics_fit = km(~., design = X_tropics_norm, response=Y_tropics)
 # Emulator diagnostics
 #
 # ----------------------------------------------------------------------------------
-run_diagnostics = FALSE # The diagnostics section is slow, so only set to TRUE if you have the time
+run_diagnostics = TRUE # The diagnostics section is slow, so only set to TRUE if you have the time
 if(run_diagnostics){
 
 # Plot the emulator against the true leave-one-out prediction
@@ -206,8 +206,10 @@ pdf(width = 6, height = 6, file = 'graphics/true_loo_all.pdf' )
 xlim = c(-0.05, 1.05)
 ylim = c(-0.05, 1.05)
 par(las =1)
-plot(Y_tropics, true.loo.all$mean, pch = 20,
-     xlab = 'observation', ylab = 'prediction',
+plot(Y_tropics, true.loo.all$mean,
+     pch = c(rep(21, 100), rep(22, 100), rep(24, 100)),
+     bg = c(rep(col.amaz, 100), rep(col.seasia, 100), rep(col.congo, 100)),
+     xlab = 'simulated forest fraction', ylab = 'emulated forest fraction',
      col = col.tropics,
      xlim = xlim, 
      ylim = ylim,
@@ -221,8 +223,16 @@ segments(x0 = Y_tropics, y0 = true.loo.all$mean - (2*true.loo.all$sd),
 axis(1, pos = 0, col = 'grey')
 axis(2, pos = 0, col = 'grey')
 abline(0,1, col = 'grey')
-legend('top', legend = c('Amazon', 'Asia', 'Africa'),
-       pch = 20, col = c(col.amaz, col.seasia, col.congo),
+legend('topleft', legend = c('Amazon', 'Asia', 'Africa'),
+       inset = 0.1,
+       pch = c(21, 22, 24), col = c(col.amaz, col.seasia, col.congo),
+       pt.bg = c(col.amaz, col.seasia, col.congo),
+       bty = 'n')
+
+legend('bottomright', legend = 'vertical lines depict \u00B1 2 \n standard deviations',
+       inset = 0.1,
+       pch = '',
+       col = 'black',
        bty = 'n')
 dev.off()
 
@@ -780,6 +790,17 @@ bc.mae = mean(abs(c((pred.amaz.bc$mean - obs_amazon), (pred.seasia.bc$mean - obs
 
 bc.mae / nobc.mae
 
+
+plot(c(obs_amazon, obs_congo, obs_seasia),
+     c(standard.amazon$mean,standard.congo$mean, standard.seasia$mean),
+     xlim = c(0.3, 0.8), ylim = c(0.3, 0.8)
+)
+
+points(c(obs_amazon, obs_congo, obs_seasia),
+       c(pred.amaz.bc$mean, pred.congo.bc$mean, pred.seasia.bc$mean),
+       col = 'red')
+abline(0,1)
+
 # --------------------------------------------------------
 # Find points which are NROY for all three systems,
 # When T and P are held at observed values and not 
@@ -1312,10 +1333,9 @@ bl.obs.map.regrid = blockswap(t(as.matrix(bl.dat.regrid)), longs = longs, lats =
 
 
 
-pdf(width = 9, height = 8, file = 'graphics/map_comparison.pdf' )
-par(bg = 'lightgrey', mfrow = c(2,2), oma = c(4,0,0,0), mar = c(4,3,3,1))
+pdf(width = 5, height = 8, file = 'graphics/map_comparison.pdf' )
+par(bg = 'lightgrey', mfrow = c(2,1), oma = c(4,0,0,0), mar = c(4,1,3,1))
 image(bl.obs.map, col = yg, zlim = c(0,1),  axes = FALSE, main = 'Observations')
-image(famous.example, col = yg, zlim = c(0,1),  axes = FALSE, main = 'FAMOUS ensemble member 1' )
 image(bl.obs.map.regrid, col = yg, zlim = c(0,1),  axes = FALSE, main = 'Regridded observations')
 reset()
 par(oma = c(1,0,0,0))
