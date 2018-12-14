@@ -9,6 +9,7 @@ library(RColorBrewer)
 library(fields)
 library(MASS)
 library(DiceKriging)
+library(ncdf4)
 
 source("/Users/dougmcneall/Documents/work/R/packages-git/emtools.R")
 source("/Users/dougmcneall/Documents/work/R/packages-git/imptools.R")

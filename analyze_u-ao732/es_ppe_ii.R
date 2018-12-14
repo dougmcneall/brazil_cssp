@@ -168,6 +168,17 @@ hist(frac_bl_change)
 nc.precip <- nc_open("data/ES_PPE_ii/JULES-ES.0p92.vn5.0.CRUNCEPv7.P0199.Annual.Amazon.precip.global_sum.nc")
 precip <- ncvar_get(nc.precip)
 
+precip.timemean = mean(precip)
+
+# Plot Amazon Precipitation
+# Interestingly, this gets more variable!
+pdf(file = 'graphics/ppe_ii/precipitation.pdf', width = 8, height = 4)
+plot(years, precip / 1e+9, type = 'l', xlab = 'year', ylab = 'Sv',
+     main = 'Amazon region precipitation')
+abline(h = precip.timemean / 1e+9, col = 'grey', lty = 'dashed')
+dev.off()
+
+
 # Plot forest fraction
 pdf('graphics/ppe_ii/forest_fraction.pdf', width = 5, height = 7)
 par(las = 1)
@@ -196,6 +207,19 @@ runoff.raw = (load_ts_ensemble("data/ES_PPE_ii/Annual.Amazon.runoff.global_sum.t
 runoff.norm = sweep(runoff.raw, 2, STATS = precip, FUN = '/')
 runoff.norm.anom = anomalizeTSmatrix(runoff.norm, ix = 1:10)
 runoff.norm.change = ts.ensemble.change(runoff.norm, startix = 1:30, endix = 125:154)
+
+
+pdf(width = 6, height = 8, file = 'graphics/ppe_ii/runoff_individual_normalized.pdf')
+plot(years, c(runoff.raw[100,], recursive = TRUE) / precip, type = 'l', ylim = c(0,1))
+lines(years, c(runoff.raw[200,], recursive = TRUE) / precip, col = 'grey' )
+
+dev.off()
+
+
+pdf(width = 6, height = 8, file = 'graphics/ppe_ii/runoff_test.pdf')
+plot(years, precip/1e+9, type = 'l', ylim = c(0,1))
+lines(years, (c(runoff.raw[100,], recursive = TRUE) / 1e+9) +0.25, col = 'grey')
+dev.off()
 
 
 pdf('graphics/ppe_ii/runoff_normalised.pdf', width = 8, height = 5 )
@@ -294,17 +318,32 @@ dev.off()
 # Use this to get some basic idea about how well the 
 # emulator works.
 # ----------------------------------------------------------------------
-runoff = (load_ts_ensemble("data/ES_PPE_ii/Annual.Amazon.runoff.global_sum.txt")/1e8)[toplevel.ix, ]
-runoff.ix = which(runoff[,1] > 0.8)
+runoff = (load_ts_ensemble("data/ES_PPE_ii/Annual.Amazon.runoff.global_sum.txt")/1e9)[toplevel.ix, ]
+runoff.ix = which(runoff[,1] > 0.08)
 
 X.runoff = X[runoff.ix, ]
 
 # There's a relationship between runoff starting value and runoff change, but
 # not sure about the causality.
 runoff.start = runoff[runoff.ix, 1]
-runoff.change = ts.ensemble.change(runoff[runoff.ix, ], 1:10, 145:154)
-plot(runoff.start, runoff.change)
+runoff.change = ts.ensemble.change(runoff[runoff.ix, ], 1:20, 135:154)
+plot(runoff.start, runoff.change )
+runoff.change.perc = (runoff.change / runoff.start) * 100
+plot(runoff.start, runoff.change.perc)
 
+#Runoff has increased by between about 7 and 20% across the ensemble
+hist(runoff.change.perc)
+
+# Does that feel similar to the Normalized runoff?
+runoff.amazon.norm.passed = runoff.norm.anom[runoff.ix, ]
+test = ts.ensemble.change(runoff.amazon.norm.passed, 1:20, 135:154) * 100
+
+# As an aside, let's have a look at how the 'passed' runoff changes over time.
+
+runoff.amazon.passed = runoff[runoff.ix,]
+matplot(t(runoff.amazon.passed), type = 'l', lty = 'solid')
+library(zoo)
+test = rollmean(c(runoff.amazon.passed[1, ], recursive = TRUE), k = 30, FUN = mean)
 
 
 # datmat contains the starting values of the timeseries
@@ -325,6 +364,8 @@ for(i in 1:length(fnlocvec)){
 }
 datmat[,7 ] = runoff.norm[, 1]
 datmat[, 8] = frac_bl[,1]
+
+## NOTE: WHY DOES datmat have missing values at the start?
 
 # Run over all outputs. Constrain to the "runoff approved" input space
 for(i in 1:ncol(datmat)){
@@ -692,6 +733,132 @@ for(i in 1:d){
   #axis(2)
 }
 dev.off()
+
+
+
+# Things to do next.
+# What constraints on parameters might we get by looking at precip, runoff etc?
+# Are our data correct? Is the precip adequate or might there be errors in it compared to
+# other observations?
+# Check the precip normalisation is right.
+# What are the absolute trends in Amazon Runoff?
+# Check we have CO2 on!
+# Pair up the CO2 increasing with non-CO2-increasing runs
+
+
+# Does the Normalised Runoff change offer any constraint on anything?
+
+# --------------------------------------------------------------------
+# Amazon Observations
+# --------------------------------------------------------------------
+
+# Azarderakhsh et al. (2011) https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2011JD015997
+# estimate the water budget of the Amazon  September 2002 - December 2006.
+# They find mean annual:
+# Precipitation             6.3
+# Evapotranspiration        2.27
+# Runoff                    3.02
+# mm/day
+
+# so runoff is
+
+runoff.amazon.ms = 0.00302 / 86400 # metres/second
+# and there are 6e+06 km^2 in the basin
+basin.m2 = 6e+06 * 1e+06
+
+# So, in Sv, the Amazon runoff is just over 0.2
+obs.runoff = (runoff.amazon.ms * basin.m2)/1e+06
+
+# Should be 0.479
+obs.runoff.amazon.normalized = 3.02/6.3
+
+# If you divide two things with +-10%, then you get +-20%
+# (add the uncertainties)
+# I guess these things aren't independent, but could be a
+# usefully conservative value.
+
+obs.runoff.amazon.normalized.upper = obs.runoff.normalized + (0.2 *obs.runoff.amazon.normalized)
+obs.runoff.amazon.normalized.lower = obs.runoff.normalized - (0.2 *obs.runoff.amazon.normalized)
+
+runoff.last.20.mean = apply(runoff.norm[,135:154], 1 , mean)
+runoff.amazon.ix = which(runoff.last.20.mean > obs.runoff.amazon.normalized.lower & 
+                           runoff.last.20.mean < obs.runoff.amazon.normalized.upper )
+
+# This is the (normalized) X matrix constrained by the 
+# normalized runoff +- 20%
+X.normrunoff.constrained = X[runoff.amazon.ix, ]
+
+hist(runoff.last.20.mean[runoff.amazon.ix])
+
+# We should build the emulator using all but the most crazy ones, and then
+# find the input space within the constraint.
+
+# How much input space is removed when we constrain on +-20%?
+# Can we constrain on differences in
+# sensitivity when constrained to the space of normalized runoff
+ts.sens.runoff = twoStep.sens(X=X.normrunoff.constrained, y = datmat[runoff.amazon.ix,'runoff']/1e+9)
+
+# Two step glmnet emulator of runoff
+twoStep.em = twoStep.glmnet(X.runoff, y = datmat[runoff.ix,'runoff']/1e+9 )
+
+X.oaat = oaat.design(X.normrunoff.constrained , n = 21, med = TRUE)
+
+oaat.pred = predict(twoStep.em$emulator, newdata = X.oaat, type = 'UK')
+
+sens = sensvar(oaat.pred = oaat.pred, n=21, d=ncol(X.oaat))
+
+pdf(file = 'graphics/ppe_ii/runoff_constrained_sensitivity.pdf', width = 10, height = 5)
+par(mar = c(6,4,2,1))
+plot(sens, axes = FALSE)
+axis(side = 1, at = 1:32, labels = colnames(X), las = 2)
+dev.off()
+
+sens.sort = sort(sens, decreasing = TRUE, index.return = TRUE)
+# Sorted summary sensitivity of runoff to inputs
+pdf(file = 'graphics/ppe_ii/SA_normalised_runoff_constrained.pdf', width = 7, height = 5)
+par(mar = c(8,4,3,1))
+plot(1:d, sens.sort$x, axes = FALSE, pch = 19,
+     xlab = '', ylab = 'OAAT Sensitivity Index')
+segments(x0 = 1:d, y0 = rep(0,d), x1 = 1:d, y1 = sens.sort$x)
+axis(1, at = 1:d,  labels = colnames(X)[sens.sort$ix], las = 3, cex.axis = 0.8)
+axis(2,las =1)
+dev.off()
+
+
+ylim = range(oaat.pred$mean)
+pdf(file = 'graphics/ppe_ii/normalized_runoff_constrained_amazon_oaat.pdf', width = 9, height = 9)
+par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
+
+for(i in 1:d){
+  
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  y.oaat = oaat.pred$mean
+  
+  plot(X.oaat[ix,i], y.oaat[ix],
+       ylab= '', ylim = ylim, axes = FALSE,
+       main = '',
+       xlab = '')
+  
+  axis(1, col = 'grey', col.axis = 'grey', las = 1)
+  axis(2, col = 'grey', col.axis = 'grey', las = 1)
+  mtext(3, text = colnames(lhs)[i], line = 0.2, cex = 0.7)  
+  
+}
+
+dev.off()
+
+
+# The idea is that we do a sensitivity analysis, looking only within the NROY
+# space. So, we build an emulator using all or non-bonkers points, then 
+# sample one-at-a-time, but without including NROY points.
+
+
+
+
+
+
+
+
 
 
 
