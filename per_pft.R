@@ -25,6 +25,7 @@ byr = rev(ryb)
 rb = brewer.pal(11, "RdBu")
 br = rev(rb)
 
+cbPal <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 paired = brewer.pal(11,'Paired')
 linecols = c('black', paired[1], paired[2], paired[5])
 

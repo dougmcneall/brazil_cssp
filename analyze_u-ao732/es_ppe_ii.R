@@ -854,7 +854,114 @@ dev.off()
 
 
 
+# Load the original runoff ensemble
 
+no_co2_runoff = load_ts_ensemble("data/Annual.Amazon.runoff.global_sum.txt")/1e+9
+
+pdf('graphics/ppe_ii/runoff_no_co2.pdf', width = 8, height = 5 )
+par(las = 1)
+ensTShist(years, no_co2_runoff, 
+          colvec = linecols[c(1,3,4)], 
+          histcol = linecols[3],
+          ylab = '', xlab = '',
+          grid = FALSE, 
+          mainvec = 'Amazon Normalized Runoff no co2')
+
+dev.off()
+
+precip.sv = precip/1e+9
+
+# What order should we normalize in?
+precip.diff.sv = precip.sv - mean(precip.sv[1:10], na.rm = TRUE)
+
+# Express everything in Sverdrups
+runoff.sv = runoff.raw/1e+9
+
+runoff.diff = runoff.sv[1:300, ] - no_co2_runoff
+runoff.diff.ix <- which(abs(runoff.diff[,1]) < 1e-05)
+
+# It looks like the ensemble members might not be lined up?
+# Check that the design for the first ensemble is the same as for the second.
+# [Checked and looks the same]
+pdf('graphics/ppe_ii/runoff_diff_from_no_co1.pdf', width = 8, height = 5 )
+par(las = 1)
+ensTShist(years, runoff.diff[runoff.diff.ix, ], 
+          colvec = linecols[c(1,3,4)], 
+          histcol = linecols[3],
+          ylab = '', xlab = '',
+          grid = FALSE, 
+          mainvec = 'Amazon Runoff difference from no co2 run')
+
+dev.off()
+
+runoff.diff.perc <- sweep(runoff.diff[runoff.diff.ix, ], 2, STATS = precip.sv, FUN = '/') *100
+pdf('graphics/ppe_ii/runoff_diff_from_no_co2_perc.pdf', width = 8, height = 5 )
+par(las = 1)
+ensTShist(years, runoff.diff.perc, 
+          colvec = linecols[c(1,3,4)], 
+          histcol = linecols[3],
+          ylab = '', xlab = '',
+          grid = FALSE, 
+          mainvec = 'Amazon Runoff difference from no co2 run (% precip)')
+
+dev.off()
+
+
+# MOST have the same starting value, but a few don't. Some of these are at
+# "Zero", and so will get screened out. Some aren't. Why not?
+plot(runoff.raw[1:300, 1]/1e+09, no_co2_runoff[,1])
+abline(0,1)
+
+rdiff = (runoff.raw[1:300, 1]/1e+9 -  no_co2_runoff[ ,1])
+
+hist(rdiff, xlim = c(-0.001, 0.001), breaks = 300)
+
+
+# load Amazon precipitation
+
+
+
+#nc.precip <- nc_open("data/ES_PPE_ii/JULES-ES.0p92.vn5.0.CRUNCEPv7.P0199.Annual.Amazon.precip.global_sum.nc")
+#precip <- ncvar_get(nc.precip)
+
+#precip.timemean = mean(precip)
+
+# How much has the river flow at Obidos station near the mouth of the Amazon
+# changed over the years?
+
+dai.nc = nc_open("/Users/dougmcneall/Documents/work/R/brazil_cssp/rivers/data/coastal-stns-Vol-monthly.updated-oct2007.nc")
+
+dai.time = ncvar_get(dai.nc, 'time')
+dai.flow = ncvar_get(dai.nc, 'FLOW')
+dai.stn_name = ncvar_get(dai.nc, 'stn_name')
+
+# the first row in the data is Obidos
+dai.obidos = dai.flow[1,]
+
+dai.obidos.ts = ts(dai.obidos, start = 1900, end = 2006, freq = 12)
+
+# Annual aggregation
+ann = aggregate(dai.obidos.ts, by = 12, FUN = mean, na.rm = TRUE)
+ann.anom = ann - mean(ann, na.rm = TRUE)
+
+plot(dai.obidos.ts)
+# plot against the data from Conrado
+
+# Are the first 30 years of the data different to the last 30 years?
+dai.first30 <- window(dai.obidos.ts, start=c(1928, 1), end=c(1967, 12))
+mean(dai.first30, na.rm = TRUE)
+
+dai.last30 <- window(dai.obidos.ts, start=c(1966, 1), end=c(2005, 12))
+mean(dai.last30, NA.rm = TRUE)
+
+test <- lowess(c(ann.anom, recursive = TRUE), f = 0.9)
+
+ix = is.finite(ann)
+ann.if = ann[ix]
+
+obidos.rm = rollmean(ann.if, k = 30, fill = NA, na.rm = TRUE)
+  
+plot(obidos.rm, type = 'l')
 
 
 

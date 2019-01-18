@@ -6,6 +6,21 @@ obidos = read.table('obidos.dat', skip = 6, header = TRUE, na.strings = '-999.0'
 plot(obidos$datem, obidos$rflowobs, type = 'l', xlim = c(1960, 2020))
 
 
+# Older code
+library(zoo)
+
+obidos = read.table("../rivers/obidos.dat", skip = 6, header = TRUE, na.strings = "-999.0")
+
+obs = ts(obidos$rflowobs, start = 1901, end = 2015, frequency = 12)
+rflowS0_rescale = ts(obidos$rflowS3_rescale, start = 1901, end = 2015, frequency = 12)
+obs = aggregate(obs, by = 12, FUN = mean, na.rm = TRUE)
+S0 = aggregate(rflowS0_rescale, by = 12, FUN = mean, na.rm = TRUE)
+meandiff = mean (S0 - obs, na.rm = TRUE)
+plot(S0 - meandiff)
+lines(obs, col = 'red')
+
+
+
 # this is the .netcdf file - not sure where it's from.
 library(ncdf4)
 library(zoo)
