@@ -19,6 +19,7 @@
 # able to constrain the future values even more than just through the
 # starting values.
 
+setwd('analyze_u-ao732')
 source('../per_pft.R')
 
 normalize.wrt <- function(a,b){
@@ -615,7 +616,8 @@ for(i in 1:6){
   hist(dat.norm[,i], main = fnams[i])
 }
 
-# Constrain with global runoff
+# Constrain with global runoff and nbp, so that the emulator
+# is not negatively affected by really bad points
 globrunoff.ix = which(dat.norm[,'runoff'] >0.5 & dat.norm[,'nbp'] > -10)
 dat.globrunoff  = dat.norm[globrunoff.ix, ]
 X.globrunoff = X[globrunoff.ix, ]
@@ -639,7 +641,10 @@ for(i in 1:ncol(y.unif)){
   y.unif[,i] = pred$mean
 }
 
-ix.kept = which(y.unif[,'cs_gb'] > 750 & y.unif[,'cs_gb'] < 3000 & y.unif[,'cv'] > 300 & y.unif[,'cv'] < 800 & y.unif[,'npp_n_gb'] > 35 & y.unif[,'npp_n_gb'] < 80)
+ix.kept = which(y.unif[,'cs_gb'] > 750 & y.unif[,'cs_gb'] < 3000 &
+                  y.unif[,'cv'] > 300 & y.unif[,'cv'] < 800 & 
+                  y.unif[,'npp_n_gb'] > 35 &
+                  y.unif[,'npp_n_gb'] < 80)
 X.kept = X.unif[ix.kept, ]
 
 # we've removed 80% of our prior input space
@@ -660,6 +665,9 @@ ix.kept2 = which(y.unif[,'cs_gb'] > 750 & y.unif[,'cs_gb'] < 3000 &
                   y.unif[,'npp_n_gb'] > 35 & y.unif[,'npp_n_gb'] < 80 &
                   pred$mean > 0.5
                   )
+
+# X.kept2 is the input space that remains when we have applied basic
+# "global" constraints
 X.kept2 = X.unif[ix.kept2, ]
 (nrow(X.kept2) / nsamp.unif) * 100
 
@@ -793,6 +801,10 @@ hist(runoff.last.20.mean[runoff.amazon.ix])
 # We should build the emulator using all but the most crazy ones, and then
 # find the input space within the constraint.
 
+## ***
+## Take this basic work, but remove inputs where the 
+## inputs are unlikely to give an even plausible output
+
 # How much input space is removed when we constrain on +-20%?
 # Can we constrain on differences in
 # sensitivity when constrained to the space of normalized runoff
@@ -851,6 +863,250 @@ dev.off()
 # The idea is that we do a sensitivity analysis, looking only within the NROY
 # space. So, we build an emulator using all or non-bonkers points, then 
 # sample one-at-a-time, but without including NROY points.
+#***
+
+# Need a sensitivity analysis function that
+# 1) Build multiple emulators
+# 2) Allows constraints
+
+
+allin = function(x, mins, maxes){
+  # are all the elements of a vector in range?
+  all(x > mins & x < maxes)
+}
+
+#test = matrix(1:6, ncol = 2)
+#apply(test, 1, FUN = allin, mins = c(0,0), maxes = c(2,5))
+
+#test = matrix(1:9, ncol = 3)
+#apply(test, 1, FUN = allin, mins = c(0,0,0), maxes = c(3,5,8))
+
+constrained.oaat = function(X, Y, n.oaat = 21, mins, maxes, predtype = 'UK',
+                            nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL,
+                            seed=NULL, trace=FALSE, maxit=100,
+                            REPORT=10, factr=1e7, pgtol=0.0, parinit=NULL, 
+                            popsize=100)
+  {
+  # X        ...   Experiment design
+  # Y        ...   Matrix of model output, with variables in columns
+  # maxes    ...   Vector maximum tolerable value of variables corresponding
+  #                to columns of Y
+  # mins     ...   Vector minimum tolerable value of variables corresponding
+  #                to columns of Y
+  
+  # generate oaat design
+  d = ncol(X)
+  X.norm = normalize(X)
+  X.oaat = oaat.design(X.norm, n = n.oaat, med = TRUE)
+  colnames(X.oaat) = colnames(X)
+  
+  # generate ncol(Y) emulators
+  p = ncol(Y)
+  pred.mean = matrix(NA, ncol = p, nrow = nrow(X.oaat))
+  pred.sd = matrix(NA, ncol = p, nrow = nrow(X.oaat))
+  
+  for(i in 1:p){
+    
+    y = Y[, i]
+    
+    em = twoStep.glmnet(X=X.norm, y=y, nugget=nugget, nuggetEstim=nuggetEstim,
+                                  noiseVar=noiseVar,
+                                  seed=seed, trace=trace, maxit=maxit,
+                                 REPORT=REPORT, factr=factr, pgtol=pgtol,
+                                 parinit=parinit, popsize=popsize)
+    
+    oaat.pred = predict(em$emulator, newdata = X.oaat, type = predtype)
+    
+    # produce the whole oaat emulator output
+    pred.mean[, i] = oaat.pred$mean
+    pred.sd[, i] = oaat.pred$sd
+    
+  }
+  
+  ix.kept = apply(pred.mean, 1, FUN = allin, mins = mins, maxes = maxes)
+  
+  # Replace out-of-bound rows in X with NA, to make plotting
+  # the final results easier
+  X.oaat.constr = X.oaat
+  X.oaat.constr[ix.kept==FALSE, ] <- NA
+  
+  pred.constr = pred.mean
+  pred.constr[ix.kept==FALSE, ] <- NA
+  
+  pred.sd.constr = pred.sd
+  pred.sd.constr[ix.kept==FALSE, ] <- NA
+  
+  # keep only the oaat emulator output within constraints
+  return(list(X.oaat.constr = X.oaat.constr,
+              ix.kept = ix.kept,
+              pred.constr = pred.constr,
+              pred.sd.constr = pred.sd.constr,
+              X.oaat = X.oaat,
+              pred.mean = pred.mean,
+              pred.sd = pred.sd)
+         )
+}
+
+#                 cs   cv   gpp  nbp  npp runoff
+mins.constr   = c(750, 300, min(dat.norm[,'gpp_gb'], na.rm = TRUE), -10, 35, 0.5)
+maxes.constr  = c(3000, 800, max(dat.norm[,'gpp_gb'], na.rm = TRUE),
+                  max(dat.norm[,'nbp'], na.rm = TRUE),80,
+                  max(dat.norm[,'runoff'], na.rm = TRUE))
+
+# Y
+
+# Normalize BEFORE putting it in to the SA
+# Keep everything in relation to original design
+# Not going to work)
+Y = normalize(dat.globrunoff, wrt = dat.globrunoff)
+
+
+# Need to normalize the constraints too
+
+normalize.na = function(X, wrt = NULL){ 
+  
+  f <- function(X){
+  (X-min(X, na.rm = TRUE))/(max(X, na.rm = TRUE)-min(X, na.rm = TRUE))
+}
+
+# test to see if we have a matrix, array or data frame
+if(length(dim(X))==2){
+  out <- apply(X,2,f)
+}
+
+else{	
+  out <- f(X)
+}
+  
+  if(is.null(wrt) == FALSE){
+    # if argument wrt is given
+    
+    n <- nrow(X)
+    mmins <- t(kronecker(apply(wrt,2,min, na.rm = TRUE),t(rep(1,n))))
+    mmaxs <- t(kronecker(apply(wrt,2,max, na.rm = TRUE),t(rep(1,n))))
+    
+    out <- (X-mmins)/(mmaxs-mmins)
+    
+  }
+  
+out
+}
+
+
+
+test = normalize.na(matrix(mins.constr, nrow = 1), wrt = dat.norm)
+
+glob.const.oaat = constrained.oaat(X = X.globrunoff, Y = Y,
+                                   mins = mins.constr,
+                                   maxes = maxes.constr)
+
+
+# Problem: NAs in the normalization function.
+
+
+linecols.ext = c('black', paired)
+ylim = c(0,1)
+pdf(file = 'graphics/ppe_ii/global_constrained_oaat.pdf', width = 9, height = 9)
+par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
+ndat = ncol(glob.const.oaat$pred.mean)
+for(i in 1:d){
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  y.oaat = global.oaat.norm[,1]
+  
+  plot(glob.const.oaat$X.oaat[ix,i], y.oaat[ix],
+       type = 'n',
+       ylab= '', ylim = ylim, axes = FALSE,
+       main = '',
+       xlab = '')
+  
+  for(j in 1:ndat){
+    y.oaat = global.oaat.norm[ix,j]
+    lines(glob.const.oaat$X.oaat[ix,i],y.oaat, col = linecols.ext[j], lwd = 2) 
+  }
+  axis(1, col = 'grey', col.axis = 'grey', las = 1)
+  axis(2, col = 'grey', col.axis = 'grey', las = 1)
+  mtext(3, text = colnames(lhs)[i], line = 0.2, cex = 0.7)  
+}
+reset()
+legend('top',
+       legend = colnames(dat.globrunoff), 
+       col = linecols.ext,
+       cex = 0.8,
+       lwd = 2,
+       horiz = TRUE)
+dev.off()
+
+
+global.oaat.norm = normalize(glob.const.oaat$pred.constr)
+linecols.ext = c('black', paired)
+
+ylim = c(0,1)
+pdf(file = 'graphics/ppe_ii/global_constrained_oaat.pdf', width = 9, height = 9)
+par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
+ndat = ncol(glob.const.oaat$pred.constr.mean)
+for(i in 1:d){
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  y.oaat = global.oaat.norm[,1]
+  
+  plot(glob.const.oaat$X.oaat.constr[ix,i], y.oaat[ix],
+       type = 'n',
+       ylab= '', ylim = ylim, axes = FALSE,
+       main = '',
+       xlab = '')
+  
+  for(j in 1:ndat){
+    y.oaat = global.oaat.norm[ix,j]
+    lines(glob.const.oaat$X.oaat.constr[ix,i],y.oaat, col = linecols.ext[j], lwd = 2) 
+  }
+  axis(1, col = 'grey', col.axis = 'grey', las = 1)
+  axis(2, col = 'grey', col.axis = 'grey', las = 1)
+  mtext(3, text = colnames(lhs)[i], line = 0.2, cex = 0.7)  
+}
+reset()
+legend('top',
+       legend = colnames(dat.globrunoff), 
+       col = linecols.ext,
+       cex = 0.8,
+       lwd = 2,
+       horiz = TRUE)
+dev.off()
+
+
+
+
+
+
+sens = sensvar(oaat.pred = oaat.pred, n=21, d=ncol(X.oaat))
+
+
+twoStep.sens = function(X, y, n=21, predtype = 'UK', nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, seed=NULL, trace=FALSE, maxit=100,
+                        REPORT=10, factr=1e7, pgtol=0.0, parinit=NULL, popsize=100){
+  # Sensitivity analysis with twoStep emulator. 
+  # Calculates the variance of the output varied one at a time across each input.
+  d = ncol(X)
+  X.norm = normalize(X)
+  X.oaat = oaat.design(X.norm, n, med = TRUE)
+  colnames(X.oaat) = colnames(X)
+  
+  twoStep.em = twoStep.glmnet(X=X, y=y, nugget=nugget, nuggetEstim=nuggetEstim, noiseVar=noiseVar,
+                              seed=seed, trace=trace, maxit=maxit,
+                              REPORT=REPORT, factr=factr, pgtol=pgtol,
+                              parinit=parinit, popsize=popsize)
+  
+  oaat.pred = predict(twoStep.em$emulator, newdata = X.oaat, type = predtype)
+  
+  sens = sensvar(oaat.pred = oaat.pred, n=n, d=d)
+  out = sens
+  out
+}
+
+
+
+
+
+
+
+
 
 
 
