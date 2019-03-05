@@ -22,6 +22,12 @@
 setwd('analyze_u-ao732')
 source('../per_pft.R')
 
+
+allin = function(x, mins, maxes){
+  # are all the elements of a vector in range?
+  all(x > mins & x < maxes)
+}
+
 normalize.wrt <- function(a,b){
   ## n.wrt(x)
   ##
@@ -38,6 +44,36 @@ normalize.wrt <- function(a,b){
   
   (a-mmins)/(mmaxs-mmins)
 }
+
+normalize.na = function(X, wrt = NULL){ 
+  
+  f <- function(X){
+    (X-min(X, na.rm = TRUE))/(max(X, na.rm = TRUE)-min(X, na.rm = TRUE))
+  }
+  
+  # test to see if we have a matrix, array or data frame
+  if(length(dim(X))==2){
+    out <- apply(X,2,f)
+  }
+  
+  else{	
+    out <- f(X)
+  }
+  
+  if(is.null(wrt) == FALSE){
+    # if argument wrt is given
+    
+    n <- nrow(X)
+    mmins <- t(kronecker(apply(wrt,2,min, na.rm = TRUE),t(rep(1,n))))
+    mmaxs <- t(kronecker(apply(wrt,2,max, na.rm = TRUE),t(rep(1,n))))
+    
+    out <- (X-mmins)/(mmaxs-mmins)
+    
+  }
+  
+  out
+}
+
 
 
 reset <- function() {
@@ -129,6 +165,29 @@ ensTShist <- function(x, dat,grid = TRUE,colvec,histcol, mainvec,...){
   barplot(datHist$counts, horiz = TRUE, col = histcol, space = 0, axes = FALSE, xlim = xlim)
   #barplot(dat2Hist$counts, horiz = TRUE, col = colvec[2], space = 0, axes = FALSE, xlim = xlim)
 }
+# --------------------------------------------------------------------
+# Amazon Observations
+# --------------------------------------------------------------------
+
+# Azarderakhsh et al. (2011) https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2011JD015997
+# estimate the water budget of the Amazon  September 2002 - December 2006.
+# They find mean annual:
+# Precipitation             6.3
+# Evapotranspiration        2.27
+# Runoff                    3.02
+# mm/day
+
+# so runoff is
+runoff.amazon.ms = 0.00302 / 86400 # metres/second
+# and there are 6e+06 km^2 in the basin
+basin.m2 = 6e+06 * 1e+06
+
+# So, in Sv, the Amazon runoff is just over 0.2
+obs.runoff.amazon = (runoff.amazon.ms * basin.m2)/1e+06
+obs.runoff.amazon.upper = obs.runoff.amazon + (0.1 *obs.runoff.amazon)
+obs.runoff.amazon.lower = obs.runoff.amazon - (0.1 *obs.runoff.amazon)
+
+
 
 years = 1861:2014
 ysec = 60*60*24*365
@@ -166,8 +225,11 @@ hist(apply(frac_bl[, 125:154], 1, FUN = 'mean'))
 hist(frac_bl_change)
 
 # load Amazon precipitation
-nc.precip <- nc_open("data/ES_PPE_ii/JULES-ES.0p92.vn5.0.CRUNCEPv7.P0199.Annual.Amazon.precip.global_sum.nc")
-precip <- ncvar_get(nc.precip)
+nc.precip = nc_open("data/ES_PPE_ii/JULES-ES.0p92.vn5.0.CRUNCEPv7.P0199.Annual.Amazon.precip.global_sum.nc")
+precip = ncvar_get(nc.precip)
+#
+precip.sv = precip/1e+9
+
 
 precip.timemean = mean(precip)
 
@@ -207,7 +269,8 @@ dev.off()
 runoff.raw = (load_ts_ensemble("data/ES_PPE_ii/Annual.Amazon.runoff.global_sum.txt"))[toplevel.ix, ]
 runoff.norm = sweep(runoff.raw, 2, STATS = precip, FUN = '/')
 runoff.norm.anom = anomalizeTSmatrix(runoff.norm, ix = 1:10)
-runoff.norm.change = ts.ensemble.change(runoff.norm, startix = 1:30, endix = 125:154)
+runoff.anom.sv = anomalizeTSmatrix(runoff.raw, ix = 1:20)/1e9
+runoff.norm.change = ts.ensemble.change(runoff.norm, startix = 1:20, endix = 135:154)
 
 
 pdf(width = 6, height = 8, file = 'graphics/ppe_ii/runoff_individual_normalized.pdf')
@@ -320,14 +383,278 @@ dev.off()
 # emulator works.
 # ----------------------------------------------------------------------
 runoff = (load_ts_ensemble("data/ES_PPE_ii/Annual.Amazon.runoff.global_sum.txt")/1e9)[toplevel.ix, ]
+
+# There is what feels like a natural break just below 0.1 Sv for a starting value
+# runoff.ix is an initial constraint
 runoff.ix = which(runoff[,1] > 0.08)
 
 X.runoff = X[runoff.ix, ]
 
+# Plot a timeseries of runoff that colours the runs excluded in a basic constraint
+
+pdf(file = 'graphics/ppe_ii/amazon_runoff_constaint_indicated.pdf', 
+    width = 7, height = 5)
+par(las = 1)
+matplot(t(runoff), type = 'n', axes = FALSE)
+matlines(t(runoff[runoff.ix, ]), col = 'grey', lty = 'solid')
+matlines(t(runoff[-runoff.ix, ]), col = 'red', lty = 'solid')
+axis(1)
+axis(2)
+dev.off()
+
+pdf(file = 'graphics/ppe_ii/amazon_runoff_constaint_indicated_hist.pdf', 
+    width = 7, height = 5)
+colvec = rep('red', nrow(runoff))
+colvec[runoff.ix] <-  c('darkgrey','grey','lightgrey' )
+ensTShist(years, dat = runoff, colvec = colvec,
+          histcol = 'grey', grid = FALSE,
+          ylab = 'Sv', xlab = '',
+          mainvec = 'Amazon runoff')
+par(fg = 'black')
+reset()
+legend('topright', lty = 'solid', col = 'red', 
+       legend = 'Level 0 excluded run', bty = 'n')
+dev.off()
+
+pdf(file = 'graphics/ppe_ii/amazon_runoff_anom_constaint_indicated_hist.pdf', 
+    width = 7, height = 5)
+colvec = rep('red', nrow(runoff.anom.sv))
+colvec[runoff.ix] <-  c('darkgrey','grey','lightgrey' )
+ensTShist(years, dat = runoff.anom.sv, colvec = colvec,
+          histcol = 'grey', grid = FALSE,
+          ylab = 'Sv', xlab = '',
+          mainvec = 'Amazon runoff anomaly')
+par(fg = 'black')
+reset()
+legend('topright', lty = 'solid', col = 'red', 
+       legend = 'Level 0 excluded run', bty = 'n')
+dev.off()
+
+
+
 # There's a relationship between runoff starting value and runoff change, but
 # not sure about the causality.
 runoff.start = runoff[runoff.ix, 1]
+
+# 
+# Runoff has generally increased in the ensemble
+# Need to line this up with dates from observations.
+# (1928 to 2014)
 runoff.change = ts.ensemble.change(runoff[runoff.ix, ], 1:20, 135:154)
+
+obidos.start.ix = which(years ==1928)
+runoff.change.obidos = ts.ensemble.change(runoff[runoff.ix, ],
+                                          seq(from = obidos.start.ix, to = (obidos.start.ix+19)),
+                                          135:154)
+
+# This is already normalised to precip
+runoff.norm.change.obidos = ts.ensemble.change(runoff.norm[runoff.ix, ],
+                                               seq(from = obidos.start.ix, to = (obidos.start.ix+19)),
+                                               135:154)
+
+# Calculate the change in runoff as a proportion of initial runoff
+init.ix = seq(from = obidos.start.ix, to = (obidos.start.ix+19))
+end.ix = 135:154
+
+runoff.initial = apply(runoff[runoff.ix, init.ix], 1, FUN = mean)
+runoff.end = apply(runoff[runoff.ix, end.ix], 1, FUN = mean)
+
+runoff.change.from.init = ((runoff.end - runoff.initial) /  runoff.initial) * 100
+
+
+# Find the rise in runoff in the runoff-constrained
+# ensemble as a proportion of the precip at the start of the observations
+precip.sv.obs.start = mean(precip.sv[seq(from = obidos.start.ix, to = (obidos.start.ix+19))])
+
+# How much does precip increase as a proportion of the initial (1928 -1958)
+# value?
+precip.sv.recent = mean(precip.sv[135:154])
+precip.sv.change = (precip.sv.recent - precip.sv.obs.start) 
+precip.change.prop.start = (precip.sv.recent - precip.sv.obs.start ) / precip.sv.obs.start 
+
+precip.change.prop = (precip.sv.recent - precip.sv.obs.start ) / precip.sv.obs.start 
+
+# How much does runoff change as a fraction of precip change?
+runoff.change.as.prop.precip.change = 
+  (runoff.end - runoff.initial) / (precip.sv.recent - precip.sv.obs.start ) 
+
+
+
+load(file = '~/Documents/work/R/brazil_cssp/rivers/data/perc_change.Rdata')
+
+pdf(file = 'graphics/ppe_ii/runoff_change_hist.pdf', width = 6, height = 9)
+par(mfrow = c(5,1), fg = 'darkgrey', xaxs = 'i', yaxs = 'i', las = 1)
+axcol = 'black'
+
+hist(runoff.change.obidos,
+     xlab = 'Flow change (Sv)',
+     main = 'Ensemble Amazon runoff change 1928 - 2014',
+     xlim = c(0, 0.04),
+     col = 'grey')
+legend('topleft', pch = '|', legend = 'precipitation change',
+       col = 'red', bty = 'n', pt.cex = 2, text.col = axcol)
+axis(1, col = 'black')
+axis(2, col = 'black')
+rug(precip.sv.change, col = 'red', lwd = 3, ticksize = 0.09)
+
+hist(runoff.change.as.prop.precip.change*100,
+     main = '',
+     xlab = 'As proportion of precipitation change (%)',
+     col = 'grey'
+     )
+axis(1)
+axis(2)
+
+hist(runoff.change.from.init,
+     axes = FALSE,
+     col = 'grey',
+     main = '',
+     xlab = 'As proportion of initial runoff (%)',
+     xlim = c(0,20))
+axis(1, col = 'black')
+axis(2, col = 'black')
+rug(runoff.obs.perc.change, col = 'red', lwd = 3, ticksize = 0.09)
+legend('topleft', pch = '|', legend = 'Obidos observation',
+       col = 'red', bty = 'n', pt.cex = 2, text.col = axcol)
+
+hist((runoff.change.obidos / precip.sv.obs.start)*100,
+     xlim = c(0,8),
+      xlab = 'As proportion of initial precipitation (%)',
+     main = '',
+     col = 'grey')
+legend('topleft', pch = '|', legend = 'precipitation change', 
+       col = 'red', bty = 'n', pt.cex = 2, text.col = axcol)
+axis(1, col = 'black')
+axis(2, col = 'black')
+rug(precip.change.prop.start*100, col = 'red', lwd = 3, ticksize = 0.09)
+
+hist(runoff.norm.change.obidos * 100,
+     xlim = c(0,8),
+     xlab = 'As proportion of coincident precipitation (%)',
+     main = '',
+     col = 'grey')
+axis(1, col = 'black')
+axis(2, col = 'black')
+
+dev.off()
+
+# ------------------------------------------------------------------------
+# Load the runoff from the ensemble with No CO2 change
+# ------------------------------------------------------------------------
+
+no_co2_runoff = load_ts_ensemble("data/Annual.Amazon.runoff.global_sum.txt")/1e+9
+no_co2_runoff.ix = which(no_co2_runoff[,1] > 0.08)
+
+no_co2_runoff.change.obidos = ts.ensemble.change(no_co2_runoff[no_co2_runoff.ix, ],
+                                          seq(from = obidos.start.ix, to = (obidos.start.ix+19)),
+                                          135:154)
+
+hist(no_co2_runoff.change.obidos)
+
+
+# Calculate the change in no co2 runoff as a proportion of initial runoff
+
+no_co2_runoff.initial = apply(no_co2_runoff[no_co2_runoff.ix, init.ix], 1, FUN = mean)
+no_co2_runoff.end = apply(no_co2_runoff[no_co2_runoff.ix, end.ix], 1, FUN = mean)
+
+no_co2_runoff.change.as.prop.precip.change = 
+  (no_co2_runoff.end - no_co2_runoff.initial) / (precip.sv.recent - precip.sv.obs.start )
+
+hist(no_co2_runoff.change.as.prop.precip.change * 100)
+
+pdf(file = 'graphics/ppe_ii/no_co2_runoff_change_hist.pdf', width = 6, height = 6)
+par(mfrow = c(2,1), fg = 'darkgrey', xaxs = 'i', yaxs = 'i', las = 1)
+axcol = 'black'
+
+hist(no_co2_runoff.change.obidos,
+     xlab = 'Flow change (Sv)',
+     main = 'No CO2 rise ensemble Amazon runoff change 1928 - 2014',
+     xlim = c(0, 0.04),
+     col = 'grey')
+legend('topleft', pch = '|', legend = 'precipitation change',
+       col = 'red', bty = 'n', pt.cex = 2, text.col = axcol)
+axis(1, col = 'black')
+axis(2, col = 'black')
+rug(precip.sv.change, col = 'red', lwd = 3, ticksize = 0.09)
+
+hist(no_co2_runoff.change.as.prop.precip.change*100,
+     main = '',
+     xlab = 'As proportion of precipitation change (%)',
+     col = 'grey'
+)
+axis(1)
+axis(2)
+
+dev.off()
+
+
+
+
+
+
+pdf('graphics/ppe_ii/runoff_no_co2.pdf', width = 8, height = 5 )
+par(las = 1)
+ensTShist(years, no_co2_runoff, 
+          colvec = linecols[c(1,3,4)], 
+          histcol = linecols[3],
+          ylab = '', xlab = '',
+          grid = FALSE, 
+          mainvec = 'Amazon Normalized Runoff no co2')
+
+dev.off()
+# What order should we normalize in?
+precip.diff.sv = precip.sv - mean(precip.sv[1:10], na.rm = TRUE)
+
+# Express everything in Sverdrups
+runoff.sv = runoff.raw/1e+9
+runoff.diff = runoff.sv[1:300, ] - no_co2_runoff
+runoff.diff.ix <- which(abs(runoff.diff[,1]) < 1e-05)
+
+# It looks like the ensemble members might not be lined up?
+# Check that the design for the first ensemble is the same as for the second.
+# [Checked and looks the same]
+pdf('graphics/ppe_ii/runoff_diff_from_no_co1.pdf', width = 8, height = 5 )
+par(las = 1)
+ensTShist(years, runoff.diff[runoff.diff.ix, ], 
+          colvec = linecols[c(1,3,4)], 
+          histcol = linecols[3],
+          ylab = '', xlab = '',
+          grid = FALSE, 
+          mainvec = 'Amazon Runoff difference from no co2 run')
+
+dev.off()
+
+runoff.diff.perc <- sweep(runoff.diff[runoff.diff.ix, ], 2, STATS = precip.sv, FUN = '/') *100
+pdf('graphics/ppe_ii/runoff_diff_from_no_co2_perc.pdf', width = 8, height = 5 )
+par(las = 1)
+ensTShist(years, runoff.diff.perc, 
+          colvec = linecols[c(1,3,4)], 
+          histcol = linecols[3],
+          ylab = '', xlab = '',
+          grid = FALSE, 
+          mainvec = 'Amazon Runoff difference from no co2 run (% precip)')
+
+dev.off()
+# Reproduce some of the previous graphics
+
+
+# MOST have the same starting value, but a few don't. Some of these are at
+# "Zero", and so will get screened out. Some aren't. Why not?
+plot(runoff.raw[1:300, 1]/1e+09, no_co2_runoff[,1])
+abline(0,1)
+
+rdiff = (runoff.raw[1:300, 1]/1e+9 -  no_co2_runoff[ ,1])
+
+hist(rdiff, xlim = c(-0.001, 0.001), breaks = 300)
+
+
+
+
+
+# How much does the normalised runoff change from 1928 - 2014? 
+
+# How much does runoff change as a proportion of initial runoff?
+
 plot(runoff.start, runoff.change )
 runoff.change.perc = (runoff.change / runoff.start) * 100
 plot(runoff.start, runoff.change.perc)
@@ -343,6 +670,8 @@ test = ts.ensemble.change(runoff.amazon.norm.passed, 1:20, 135:154) * 100
 
 runoff.amazon.passed = runoff[runoff.ix,]
 matplot(t(runoff.amazon.passed), type = 'l', lty = 'solid')
+
+
 library(zoo)
 test = rollmean(c(runoff.amazon.passed[1, ], recursive = TRUE), k = 30, FUN = mean)
 
@@ -629,6 +958,30 @@ maxes = apply(X.globrunoff, 2, max)
 nsamp.unif = 100000
 X.unif = samp.unif(nsamp.unif, mins = mins, maxes = maxes)
 
+pdf(file = 'graphics/ppe_ii/pairs_dens_all_constraints0.pdf', width = 10, height = 10)
+par(oma = c(0,0,0,3))
+test = pairs(X.unif,
+             labels = 1:d,
+             gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
+             panel = dfunc.up,
+             cex.labels = 1,
+             col.axis = 'white')
+
+image.plot(legend.only = TRUE,
+           zlim = c(0,1),
+           col = rb,
+           legend.args = list(text = 'Density of model runs matching the criteria', side = 3, line = 1),
+           horizontal = TRUE
+)
+#par(xpd = NA)
+#text(0.2, 0.6, labels = paste0(colnames(lhs)[1:5],'\n'))
+legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
+
+dev.off()
+
+
+
+
 y.unif = matrix(nrow = nsamp.unif, ncol = ncol(dat.globrunoff))
 colnames(y.unif) = colnames(dat.globrunoff)
 
@@ -650,6 +1003,30 @@ X.kept = X.unif[ix.kept, ]
 # we've removed 80% of our prior input space
 (nrow(X.kept) / nsamp.unif) * 100
 
+
+pdf(file = 'graphics/ppe_ii/pairs_dens_all_constraints1.pdf', width = 10, height = 10)
+par(oma = c(0,0,0,3))
+test = pairs(X.kept,
+             labels = 1:d,
+             gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
+             panel = dfunc.up,
+             cex.labels = 1,
+             col.axis = 'white')
+
+image.plot(legend.only = TRUE,
+           zlim = c(0,1),
+           col = rb,
+           legend.args = list(text = 'Density of model runs matching the criteria', side = 3, line = 1),
+           horizontal = TRUE
+)
+#par(xpd = NA)
+#text(0.2, 0.6, labels = paste0(colnames(lhs)[1:5],'\n'))
+legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
+
+dev.off()
+
+
+
 # Any marginal constraint? (not really)
 apply(X.kept, 2, min)
 apply(X.kept, 2, max)
@@ -657,13 +1034,13 @@ apply(X.kept, 2, max)
 
 bl_frac_modern = frac_bl[globrunoff.ix, 154]
 
-em = twoStep.glmnet(X = X.globrunoff, y = bl_frac_modern)
-pred = predict(em$emulator, newdata = X.unif, type = 'UK')
+em.bl_frac_modern = twoStep.glmnet(X = X.globrunoff, y = bl_frac_modern)
+pred.bl_frac_modern = predict(em.bl_frac_modern$emulator, newdata = X.unif, type = 'UK')
 
 ix.kept2 = which(y.unif[,'cs_gb'] > 750 & y.unif[,'cs_gb'] < 3000 & 
                   y.unif[,'cv'] > 300 & y.unif[,'cv'] < 800 &
                   y.unif[,'npp_n_gb'] > 35 & y.unif[,'npp_n_gb'] < 80 &
-                  pred$mean > 0.5
+                   pred.bl_frac_modern$mean > 0.5
                   )
 
 # X.kept2 is the input space that remains when we have applied basic
@@ -743,6 +1120,97 @@ for(i in 1:d){
 dev.off()
 
 
+# Emulate Amazon runoff at X.unif
+# mean of the last 20 years of runoff
+recent.amazon.runoff.chunk = runoff.raw[globrunoff.ix, 135:154] /1e9
+recent.amazon.runoff.mean = apply(recent.amazon.runoff.chunk, 1, mean )
+
+em.amazon.runoff = twoStep.glmnet(X = X.globrunoff, y = recent.amazon.runoff.mean)
+
+pred.amazon.runoff = predict(em.amazon.runoff$emulator,
+                             newdata = X.unif, type = 'UK')
+
+ix.kept3 = which(y.unif[,'cs_gb'] > 750 & y.unif[,'cs_gb'] < 3000 & 
+                   y.unif[,'cv'] > 300 & y.unif[,'cv'] < 800 &
+                   y.unif[,'npp_n_gb'] > 35 & y.unif[,'npp_n_gb'] < 80 &
+                   pred.bl_frac_modern$mean > 0.5 &
+                   pred.amazon.runoff$mean > obs.runoff.amazon.lower & pred.amazon.runoff$mean < obs.runoff.amazon.upper
+)
+
+X.kept3 = X.unif[ix.kept3, ]
+
+(nrow(X.kept2) / nsamp.unif) * 100
+(nrow(X.kept3) / nsamp.unif) * 100
+# How much space have we removed 
+(nrow(X.kept3) / nrow(X.kept2)) * 100
+
+pdf(file = 'graphics/ppe_ii/pairs_dens_all_constraints3.pdf', width = 10, height = 10)
+par(oma = c(0,0,0,3))
+test = pairs(X.kept3,
+             labels = 1:d,
+             gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
+             panel = dfunc.up,
+             dfunc.col = rb,
+             cex.labels = 1,
+             col.axis = 'white')
+
+image.plot(legend.only = TRUE,
+           zlim = c(0,1),
+           col = rb,
+           legend.args = list(text = 'Density of model runs matching the criteria', side = 3, line = 1),
+           horizontal = TRUE
+)
+
+#par(xpd = NA)
+#text(0.2, 0.6, labels = paste0(colnames(lhs)[1:5],'\n'))
+legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
+
+dev.off()
+
+
+######################################### 
+# Build an emulator for runoff change and predict what the runoff change is 
+# at the various NROY inputs
+######################################### 
+
+em.runoff.change.obidos = twoStep.glmnet(X = X.runoff, y = runoff.change.obidos )
+
+runoff.change.obidos.constained = predict(em.runoff.change.obidos$emulator,
+         newdata = X.kept, type = 'UK')
+
+runoff.change.obidos.constained2 = predict(em.runoff.change.obidos$emulator,
+                                          newdata = X.kept2, type = 'UK')
+
+runoff.change.obidos.constained3 = predict(em.runoff.change.obidos$emulator,
+                                           newdata = X.kept3, type = 'UK')
+
+xlim = c(0.01,0.03)
+ticksize = 0.09
+pdf(file = 'graphics/ppe_ii/runoff_change_constrained.pdf', width = 6, height = 7)
+par(mfrow = c(4,1))
+hist(runoff.change.obidos, xlim = xlim, col = 'lightgrey',
+     main = 'Level 0 constraint', xlab = 'Amazon runoff change (Sv)')
+legend('topleft', legend = c('runoff obs.', 'precipitation obs.'), col = c('red', 'blue'), bty = 'n', pch = '|', pt.cex = 1.2,
+       pt.lwd = 2)
+rug(runoff.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
+rug(precip.sv.change, col = 'blue', lwd = 3, ticksize = ticksize)
+
+hist(runoff.change.obidos.constained$mean, xlim = xlim, col = 'lightgrey', 
+     main = 'Level 1 constraint', xlab = 'Amazon runoff change (Sv)')
+rug(runoff.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
+rug(precip.sv.change, col = 'blue', lwd = 3, ticksize = ticksize)
+hist(runoff.change.obidos.constained2$mean, xlim = xlim,col = 'lightgrey',
+     main = 'Level 2 constraint', xlab = 'Amazon runoff change (Sv)')
+rug(runoff.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
+rug(precip.sv.change, col = 'blue', lwd = 3, ticksize = ticksize)
+hist(runoff.change.obidos.constained3$mean, xlim = xlim,col = 'lightgrey',
+     main = 'Level 3 constraint', xlab = 'Amazon runoff change (Sv)')
+rug(runoff.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
+rug(precip.sv.change, col = 'blue', lwd = 3, ticksize = ticksize)
+dev.off()
+
+
+
 
 # Things to do next.
 # What constraints on parameters might we get by looking at precip, runoff etc?
@@ -755,28 +1223,6 @@ dev.off()
 
 
 # Does the Normalised Runoff change offer any constraint on anything?
-
-# --------------------------------------------------------------------
-# Amazon Observations
-# --------------------------------------------------------------------
-
-# Azarderakhsh et al. (2011) https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2011JD015997
-# estimate the water budget of the Amazon  September 2002 - December 2006.
-# They find mean annual:
-# Precipitation             6.3
-# Evapotranspiration        2.27
-# Runoff                    3.02
-# mm/day
-
-# so runoff is
-
-runoff.amazon.ms = 0.00302 / 86400 # metres/second
-# and there are 6e+06 km^2 in the basin
-basin.m2 = 6e+06 * 1e+06
-
-# So, in Sv, the Amazon runoff is just over 0.2
-obs.runoff = (runoff.amazon.ms * basin.m2)/1e+06
-
 # Should be 0.479
 obs.runoff.amazon.normalized = 3.02/6.3
 
@@ -785,8 +1231,8 @@ obs.runoff.amazon.normalized = 3.02/6.3
 # I guess these things aren't independent, but could be a
 # usefully conservative value.
 
-obs.runoff.amazon.normalized.upper = obs.runoff.normalized + (0.2 *obs.runoff.amazon.normalized)
-obs.runoff.amazon.normalized.lower = obs.runoff.normalized - (0.2 *obs.runoff.amazon.normalized)
+obs.runoff.amazon.normalized.upper = obs.runoff.amazon.normalized + (0.2 *obs.runoff.amazon.normalized)
+obs.runoff.amazon.normalized.lower = obs.runoff.amazon.normalized - (0.2 *obs.runoff.amazon.normalized)
 
 runoff.last.20.mean = apply(runoff.norm[,135:154], 1 , mean)
 runoff.amazon.ix = which(runoff.last.20.mean > obs.runoff.amazon.normalized.lower & 
@@ -870,10 +1316,7 @@ dev.off()
 # 2) Allows constraints
 
 
-allin = function(x, mins, maxes){
-  # are all the elements of a vector in range?
-  all(x > mins & x < maxes)
-}
+
 
 #test = matrix(1:6, ncol = 2)
 #apply(test, 1, FUN = allin, mins = c(0,0), maxes = c(2,5))
@@ -962,47 +1405,17 @@ Y = normalize(dat.globrunoff, wrt = dat.globrunoff)
 
 
 # Need to normalize the constraints too
+# Normalize everything compared to the initial data (dat.norm)
+mins.norm = normalize.na(matrix(mins.constr, nrow = 1), wrt = dat.norm)
+maxes.norm = normalize.na(matrix(maxes.constr, nrow = 1), wrt = dat.norm)
+Y.norm = normalize.na(dat.globrunoff, wrt = dat.norm)
 
-normalize.na = function(X, wrt = NULL){ 
-  
-  f <- function(X){
-  (X-min(X, na.rm = TRUE))/(max(X, na.rm = TRUE)-min(X, na.rm = TRUE))
-}
+glob.const.oaat = constrained.oaat(X = X.globrunoff, Y = Y.norm,
+                                   n.oaat = 41,
+                                   mins = mins.norm,
+                                   maxes = maxes.norm)
 
-# test to see if we have a matrix, array or data frame
-if(length(dim(X))==2){
-  out <- apply(X,2,f)
-}
-
-else{	
-  out <- f(X)
-}
-  
-  if(is.null(wrt) == FALSE){
-    # if argument wrt is given
-    
-    n <- nrow(X)
-    mmins <- t(kronecker(apply(wrt,2,min, na.rm = TRUE),t(rep(1,n))))
-    mmaxs <- t(kronecker(apply(wrt,2,max, na.rm = TRUE),t(rep(1,n))))
-    
-    out <- (X-mmins)/(mmaxs-mmins)
-    
-  }
-  
-out
-}
-
-
-
-test = normalize.na(matrix(mins.constr, nrow = 1), wrt = dat.norm)
-
-glob.const.oaat = constrained.oaat(X = X.globrunoff, Y = Y,
-                                   mins = mins.constr,
-                                   maxes = maxes.constr)
-
-
-# Problem: NAs in the normalization function.
-
+# Here is the full sensitivity analysis
 
 linecols.ext = c('black', paired)
 ylim = c(0,1)
@@ -1011,8 +1424,9 @@ par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
 ndat = ncol(glob.const.oaat$pred.mean)
 for(i in 1:d){
   ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
-  y.oaat = global.oaat.norm[,1]
   
+  y.oaat = glob.const.oaat$pred.mean
+
   plot(glob.const.oaat$X.oaat[ix,i], y.oaat[ix],
        type = 'n',
        ylab= '', ylim = ylim, axes = FALSE,
@@ -1020,7 +1434,7 @@ for(i in 1:d){
        xlab = '')
   
   for(j in 1:ndat){
-    y.oaat = global.oaat.norm[ix,j]
+    y.oaat = glob.const.oaat$pred.mean[ix,j]
     lines(glob.const.oaat$X.oaat[ix,i],y.oaat, col = linecols.ext[j], lwd = 2) 
   }
   axis(1, col = 'grey', col.axis = 'grey', las = 1)
@@ -1037,25 +1451,24 @@ legend('top',
 dev.off()
 
 
-global.oaat.norm = normalize(glob.const.oaat$pred.constr)
 linecols.ext = c('black', paired)
-
 ylim = c(0,1)
-pdf(file = 'graphics/ppe_ii/global_constrained_oaat.pdf', width = 9, height = 9)
+pdf(file = 'graphics/ppe_ii/global_constrained_oaat_2.pdf', width = 9, height = 9)
 par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
-ndat = ncol(glob.const.oaat$pred.constr.mean)
+ndat = ncol(glob.const.oaat$pred.constr)
 for(i in 1:d){
   ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
-  y.oaat = global.oaat.norm[,1]
   
-  plot(glob.const.oaat$X.oaat.constr[ix,i], y.oaat[ix],
+  y.oaat = glob.const.oaat$pred.constr
+  
+  plot(c(0,1), c(0,1),
        type = 'n',
        ylab= '', ylim = ylim, axes = FALSE,
        main = '',
        xlab = '')
   
   for(j in 1:ndat){
-    y.oaat = global.oaat.norm[ix,j]
+    y.oaat = glob.const.oaat$pred.constr[ix,j]
     lines(glob.const.oaat$X.oaat.constr[ix,i],y.oaat, col = linecols.ext[j], lwd = 2) 
   }
   axis(1, col = 'grey', col.axis = 'grey', las = 1)
@@ -1073,104 +1486,20 @@ dev.off()
 
 
 
+# Visualize the reduction in parameter space as constraints get increasingly large
+#
 
+# Visualize the reduction in parameter space as we increasingly add constraints.
 
-
-sens = sensvar(oaat.pred = oaat.pred, n=21, d=ncol(X.oaat))
-
-
-twoStep.sens = function(X, y, n=21, predtype = 'UK', nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, seed=NULL, trace=FALSE, maxit=100,
-                        REPORT=10, factr=1e7, pgtol=0.0, parinit=NULL, popsize=100){
-  # Sensitivity analysis with twoStep emulator. 
-  # Calculates the variance of the output varied one at a time across each input.
-  d = ncol(X)
-  X.norm = normalize(X)
-  X.oaat = oaat.design(X.norm, n, med = TRUE)
-  colnames(X.oaat) = colnames(X)
-  
-  twoStep.em = twoStep.glmnet(X=X, y=y, nugget=nugget, nuggetEstim=nuggetEstim, noiseVar=noiseVar,
-                              seed=seed, trace=trace, maxit=maxit,
-                              REPORT=REPORT, factr=factr, pgtol=pgtol,
-                              parinit=parinit, popsize=popsize)
-  
-  oaat.pred = predict(twoStep.em$emulator, newdata = X.oaat, type = predtype)
-  
-  sens = sensvar(oaat.pred = oaat.pred, n=n, d=d)
-  out = sens
-  out
-}
-
-
-
-
-
-
-
-
+# 1. No constraints (full density of X.unif)
+# 2. Get rid of the NAs by constraining global Runoff, nbp?
+# 3. Add tighter global constraints on all
+# 4. Add hypothetical constraints on runoff in the Amazon.
 
 
 
 # Load the original runoff ensemble
 
-no_co2_runoff = load_ts_ensemble("data/Annual.Amazon.runoff.global_sum.txt")/1e+9
-
-pdf('graphics/ppe_ii/runoff_no_co2.pdf', width = 8, height = 5 )
-par(las = 1)
-ensTShist(years, no_co2_runoff, 
-          colvec = linecols[c(1,3,4)], 
-          histcol = linecols[3],
-          ylab = '', xlab = '',
-          grid = FALSE, 
-          mainvec = 'Amazon Normalized Runoff no co2')
-
-dev.off()
-
-precip.sv = precip/1e+9
-
-# What order should we normalize in?
-precip.diff.sv = precip.sv - mean(precip.sv[1:10], na.rm = TRUE)
-
-# Express everything in Sverdrups
-runoff.sv = runoff.raw/1e+9
-
-runoff.diff = runoff.sv[1:300, ] - no_co2_runoff
-runoff.diff.ix <- which(abs(runoff.diff[,1]) < 1e-05)
-
-# It looks like the ensemble members might not be lined up?
-# Check that the design for the first ensemble is the same as for the second.
-# [Checked and looks the same]
-pdf('graphics/ppe_ii/runoff_diff_from_no_co1.pdf', width = 8, height = 5 )
-par(las = 1)
-ensTShist(years, runoff.diff[runoff.diff.ix, ], 
-          colvec = linecols[c(1,3,4)], 
-          histcol = linecols[3],
-          ylab = '', xlab = '',
-          grid = FALSE, 
-          mainvec = 'Amazon Runoff difference from no co2 run')
-
-dev.off()
-
-runoff.diff.perc <- sweep(runoff.diff[runoff.diff.ix, ], 2, STATS = precip.sv, FUN = '/') *100
-pdf('graphics/ppe_ii/runoff_diff_from_no_co2_perc.pdf', width = 8, height = 5 )
-par(las = 1)
-ensTShist(years, runoff.diff.perc, 
-          colvec = linecols[c(1,3,4)], 
-          histcol = linecols[3],
-          ylab = '', xlab = '',
-          grid = FALSE, 
-          mainvec = 'Amazon Runoff difference from no co2 run (% precip)')
-
-dev.off()
-
-
-# MOST have the same starting value, but a few don't. Some of these are at
-# "Zero", and so will get screened out. Some aren't. Why not?
-plot(runoff.raw[1:300, 1]/1e+09, no_co2_runoff[,1])
-abline(0,1)
-
-rdiff = (runoff.raw[1:300, 1]/1e+9 -  no_co2_runoff[ ,1])
-
-hist(rdiff, xlim = c(-0.001, 0.001), breaks = 300)
 
 
 # load Amazon precipitation

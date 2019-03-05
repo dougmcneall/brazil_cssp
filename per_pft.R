@@ -30,15 +30,16 @@ paired = brewer.pal(11,'Paired')
 linecols = c('black', paired[1], paired[2], paired[5])
 
 # Example of adding  density plots to a pairs plot
-dfunc.up <- function(x,y,...){
+dfunc.up <- function(x, y, dfunc.col = greys, ...){
   require(MASS)
   require(RColorBrewer)
   
-  rb = brewer.pal(9, "RdBu")
-  br  = rev(rb)
+  #rb = brewer.pal(9, "RdBu")
+  #br  = rev(rb)
+  
   # function for plotting 2d kernel density estimates in pairs() plot.
   kde = kde2d(x,y)
-  image(kde, col = rb, add = TRUE)
+  image(kde, col = dfunc.col, add = TRUE)
 }
 
 
