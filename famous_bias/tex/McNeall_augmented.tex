@@ -129,7 +129,8 @@ Using the augmented emulator allows the bias correction a pre-existing coupled e
 
 
 \introduction  %% \introduction[modified heading if necessary]
-Uncertainty quantification, compensating errors and model discrepancy
+\subsection{Uncertainty quantification, compensating errors and model discrepancy}
+
 The field of Uncertainty Quantification (UQ) has seen a rapid development of methods to quantify uncertainties when using complex computer models to simulate real, physical systems. These models often contain simplifications of processes too complex to represent explicitly in the model, termed parameterisations. Associated with these parameterisations are coefficients called input parameters, the values of which are uncertain and can be set by the model developer. The settings have a material effect on the way the parameterisations operate, and therefore on output of the model, but often to an extent that is unknown until the model is run. Input parameters are subject to uncertainty and may be difficult or even impossible to observe, having no direct analogue in the real system. The process of setting the values of the input parameters so that the simulator output best matches the real system is called tuning, and where a probability distribution is assigned for the input parameters, it is termed calibration. Uncertainty in input parameters can induce uncertainty in the output of the model, leading to uncertainty in projections of future climate states or reconstructions of past ones.
 
 Without strong prior information it can be difficult to attribute a difference between simulator output and the real system to underlying model errors, to an incorrect set of input parameters, or to inaccuracies in the observations. Similarly, there are often a number of ways to set parameters that lead to a particular model output, with poor choices of a particular parameter compensating for poor choices of other parameters, or for modelling errors. This situation means that a good candidate for input parameters might be found in a large volume of input space, and projections of the model made with candidates from across that space might display a very wide range of outcomes. This problem is sometimes referred to as ``identifiability", but otherwise known as ``equifinality", or the ``degeneracy" of model error and parameter uncertainty. It can be relatively easy to find a good subset of input parameters given a small set of inputs and outputs and a well behaved relationship between the two. This situation might be found for a subcomponent of a climate model, where there are good observations of the system being studied, for example. Improving a coupled climate model however can require an involved and lengthy process of development. Some components of the model may have been tuned to compensate for errors in others or there may be unknown errors in the model or observations. Further, more complex models are computationally expensive and so infeasible to run in enough configurations to be able to identify these errors.
@@ -157,15 +158,82 @@ McNeall et al. (2013) studied an ensemble of an ice sheet model and found that u
 While history matching has often been used used to explore and reduce the input parameter space of expensive simulators, its use as a tool to find discrepancies, bias and inadequacies in simulators is less developed. Williamson et al. (2015) argue that what was assumed a structural bias in ocean model HadCM3 could be corrected by choosing different parameters. In a different system McNeall et al. 2016 argue that a standard set of parameters for the land surface component of the climate model FAMOUS should be retained, and that a bias seen in the simulation of the Amazon rainforest is a simulator discrepancy not a poor parameter choice.
 
 In that case, the model simulated other forests at the standard set of parameters well, and only a tiny volume of parameter space could be found that (barely) adequately simulated all the forests. When cast as a choice between keeping the default parameters, or rejecting them and accepting the new region of parameter space, they argued that the former was more likely to produce a good model, as presumably scientific judgement and expertise informed the original choice of parameters, whereas there were a number of reasons one might reject the proposed parameter space. 
-Aims of the paper 
+
+\subsection{Aims of the paper}
+
 A well simulated and vigorous Amazon forest at the end of the spinup phase of a simulation experiment is a prerequisite for using the model to make robust projections of future changes in the forest. The analysis of McNeall et al. 2016 (hereafter M16) identified that the land surface input spaces where FAMOUS forest fraction was consistent with observations were very different in the Amazon than they were for other forests. The area of overlap of these spaces - one that would normally be chosen in a history matching exercise - did not simulate any of the forests well, and did not contain the default parameters. M16 suggested that assuming an error in the simulation of the Amazon forest would be a parsimonious choice. Two obvious candidates for the source of the discrepancy in the Amazon were identified: (1) a lack of deep rooting in the Amazon, meaning that trees could not access water at depth as in the real Amazon and (2) a bias in the climate of the model, impacting the vigour of the trees.
 
 This paper revisits and extends the analysis of M16 to attempt to simultaneously (1) assess the impact of a bias corrected corrected climate on the Amazon forest and (2) to identify regions of input parameter space that should be classified as plausible, given a corrected Amazon climate. To bias correct the climate we develop a new method to augment a Gaussian process emulator, with simulator outputs acting as inputs to the emulator alongside the standard input parameters.  We use simulated output of forests at different geographical locations to train the emulator, describing a single relationship between the climate of the simulator, the land surface inputs and the forest fraction. In doing so, we develop a technique that might be used to bias correct existing ensembles of coupled models, allowing a more computationally efficient method for final system-tuning of models. 
 
 In section \ref{}, we review the literature on the possible causes of the low Amazon forest fraction in FAMOUS. In section \ref{}, we describe how we use the temperature and precipitation to augment the Gaussian process emulator. In section \ref{} we use the emulator to estimate the sensitivity of forest fraction to changes in land surface and climate parameters. In section \ref{} we use the augmented emulator to bias correct the climates of the forest and examine the effect of that bias correction on the input space that is deemed statistically acceptable in a history matching exercise. In section \ref{} we search for regions of parameter space where the bias corrected simulator might perform better than at the default parameters. In section \ref{} we look at regions of climate space where the default parameters would produce statistically acceptable forests. Finally, we offer some discussion of our results in section \ref{} and conclusions in section \ref{}.
 
-\section{HEADING}
-TEXT
+\section{Climate and forest fraction in FAMOUS}
+
+Previous studies have concluded that the climate state has an influence on the Amazon rainforest. Much of that work has been motivated by the apparent risk of dieback of the Amazon forest posed by a changing climate [e.g. Malhi 2008, Cox et al 2004].  We assume here that factors that might precipitate a future change in the simulated state of the Amazon rainforest might also influence the simulation of the steady-state preindustrial forest in FAMOUS. Parameter perturbations and CO2 concentrations have also been shown to influence the simulation of tropical forests in climate models, with increases in CO2 fertilisation and associated increased water use efficiency through stomatal closure offsetting the negative impacts of purely climatic changes. A metric linked to rainforest sustainability by Mahli (2009b) is Maximum Cumulative Water Deficit, which describes the most negative value of climatological water deficit measured over a year. In a similar vein Good et al. (2011, 2013) find that in Hadley Centre models, sustainable forest is linked to dry-season length, a metric which encompasses both precipitation and temperature, along with sensitivity to increasing CO2 levels. No forest is found in regions that are too warm or too dry, and there is a fairly distinct boundary between a sustainable and non-sustainable forest. Galbraith et al (2010) found that temperature, precipitation and humidity had greatly varying influences, and by different mechanisms on changes in vegetation carbon in the Amazon across a number of models, but that rising CO2 mitigated losses in biomass. Poulter et al. (2010) found that the response of the Amazon forest to climate change in the land surface model LPJml was sensitive to perturbations in parameters, but that the dynamics of a dieback in the rainforest was robust across those perturbations. In that case, the main source of uncertainty of dieback was uncertainty in climate scenario. Boulton et al. (2017) found that temperature threshold and leaf area index parameters both have an impact on the forest sustainability under projections of climate change in the Earth system version of HadCM3.
+
+\subsection{Biases in FAMOUS}
+
+M16 speculated that both local climate biases and missing or incorrect processes in the land surface model - such as missing deep rooting in the Amazon - might be the cause of the simulated low forest fraction in the Amazon region at the end of the pre-industrial period in an ensemble of the climate model FAMOUS. In this study we use the ensemble of FAMOUS previously used in M16, to attempt to find and correct the cause of persistent low forest fraction in the amazon, identified in that paper. 
+
+The Fast Met Office UK Universities Simulator, FAMOUS (Jones et al., 2005; Smith et al., 2008), is a reduced-resolution climate simulator based on the climate model HadCM3 (Gordon et al., 2000; Pope et al., 2000). The model has many features of modern climate simulators, but is of sufficiently low resolution to provide fast and simple data sets with which to develop UQ methods. Full details of the ensemble can be found in M16 and Williams et al. 2013.
+
+The ensemble of 100 members perturbed 7 land surface and vegetation inputs, which had a strong impact on vegetation cover at the end of a spinup period, with atmospheric CO$_2$ at preindustrial conditions (figure). The broadleaf forest fraction in individual ensemble members varies from almost non-existent to vigourous. The strong relationships between forest fraction in each forest and global values implies that perturbations in input parameters exert a larger control over all forests simultaneously, and individual forests to a smaller extent.
+
+%%f
+\begin{figure}[t]
+\includegraphics[width=12cm]{../graphics/tropics_maps_yg.pdf}
+\caption{Broadleaf forest fraction in the FAMOUS ensemble, ranked from the smallest to largest global mean value.}
+\end{figure}
+
+
+M16 extracted aggregated forest fraction data for the Amazon, Southeast Asian, North American and central African forests, along with the global mean. They were only able to find very few land surface parameter settings which the emulator suggested should lead to an adequate simulations of the Amazon forests and the other forests together. Further, these parameter sets were at the edges of sampled parameter space, where larger uncertainty in the emulator may have been driving the acceptance of the parameter sets. 
+
+The ensemble did however have a further perturbation - a parameter denoted ``beta", which indexed into one of ten of the best-performing atmospheric parameter sets used in a previous ensemble with the same model. The beta parameter then summarised perturbations in a number of other parameters that impacted the climate of the model. Variations in the  parameter did not correlate with any of the land surface parameters in the ensemble, and so  was excluded from the analysis in M16.
+ 
+In this study, we use the same ensemble of forest fraction data used in M16. However, we add temperature and precipitation data, present in the original ensemble but not used to build an emulator in the M16 study, to further our understanding of the causes of the low forest fraction in the Amazon region. The temperature and precipitation data summarise the effects of the parameter on the atmospheric component of the model, in a way that is directly seen by the land surface component of the model. We consider only regions dominated by tropical broadleaf forest, so as not to confound analysis by including other forests which may have a different set of responses to perturbations in parameters, rainfall and temperature.
+
+For temperature observations we use the CRU global monthly surface temperature climatology (Jones 1999), covering the years 1960-1990 . For precipitation we use the average monthly rate of precipitation, covering the years from 1979-2001 from GPCP Version 2.2 provided by the NOAA/OAR/ESRL PSD, Boulder, Colorado, USA, from their Web site at https://www.esrl.noaa.gov/psd/ (Adler et al., 2003). Vegetation fraction observations are adapted from Loveland et al. (2000), and are shown in figure \ref{fig:map_comparison}. Although the observations all cover slightly different time periods, we expect the differences caused by harmonising the time periods to be very small compared to other uncertainties in our analysis, and to be well covered by our uncertainty estimates.
+
+
+\begin{figure}[t]
+\includegraphics[width=12cm]{../graphics/map_comparison.pdf}
+\caption{Observations of broadleaf forest fraction on their native grid (top), and regridded to the FAMOUS grid (bottom)}
+\label{fig:map_comparison}
+\end{figure}
+
+Figure \ref{fig:map_comparison} Observations of broadleaf forest fraction on their native grid (top), and regridded to the FAMOUS grid (bottom).
+
+A plot of regional mean temperature and precipitation in the tropical forest regions in the FAMOUS ensemble (figure \cite{fig:fraction_vs_temp_precip_pcolcor}) indicates the form of the impact that the regional climate has on forest fraction in the climate model. Central African and Southeast Asian climates in the model simulations run in a sweep across the middle of the plot, from dry and cool to wet and warm. 
+
+It appears that a wetter climate - which would be expected to stabilize forests - broadly compensates for the forest reductions induced by a warmer climate. Within the ensemble of Central African forests for example, forest fraction increases towards the ``cooler, wetter" (top left) part of the climate phase space. Beyond a certain value however, there are no simulated forests in this climatic region. It is clear from the plot that while central African and Southeast Asian forests are simulated in the large part considerably warmer than recent observations, they are also simulated considerably wetter, which might be expected to compensate forest stability. In contrast, while simulated considerably warmer, the Amazon is also slightly drier than recent observations, which might further reduce forest stability.
+
+\begin{figure}[t]
+\includegraphics[width=12cm]{../graphics/fraction_vs_temp_precip_pcolcor.pdf}
+\caption{Smaller symbols represent broadleaf forest fraction in the FAMOUS ensemble against regional mean temperature and precipitation. Ensemble member forest fraction in the Amazon is represented by the colour of the circles, Central Africa by triangles and SE Asia by squares. Larger symbols represent observed climate and forest fraction.
+}
+\label{fig:fraction_vs_temp_precip_pcolcor}
+\end{figure}
+
+
+\section{Methods}
+The climate model FAMOUS is computationally expensive enough that we cannot run it for a large enough number of input parameter combinations to adequately explore parameter space and find model biases. To increase computational efficiency we build a Gaussian process emulator: a statistical function that predicts the output of the model at any input, with a corresponding estimate of uncertainty. The emulator models climate model output y as a function g() of inputs x so that y = g(x). It is trained on an ensemble of model runs at set of inputs called the design matrix, denoted X, giving a sample of model output. The configuration of the design matrix is a latin hypercube (MacKay 1979), as used in  e.g. Gregoire et al., 2010, Williams et al., 2013), with sample input points chosen to fill input parameter space efficiently and therefore sample relationships between input parameters effectively.
+
+\subsection{An augmented emulator}
+Our strategy is to augment the design matrix of input parameters X with corresponding atmospheric climate model output that might have an impact on the modelled land surface. We build an emulator that models the effects of both input parameters and climate on forest fraction. We then use the augmented emulator to bias correct each forest in turn.
+
+We will use the emulator to describe the relationship between land surface parameters, atmospheric variables that summarise the action of hidden atmospheric parameters, and the broadleaf forest fraction. The relationships between these variables are summarised in figure \ref{fig:dag}. 
+
+\begin{figure}[t]
+\includegraphics[width=12cm]{../graphics/dag.pdf}
+\caption{A graph showing the assumed relationship between input parameters, climate variables and forest fraction. An arrow indicates influence in the direction of the arrow. Processes that are directly emulated are shown with a solid arrow, while the processes shown by a dotted arrow are not directly emulated. 
+}
+\label{fig:dag}
+\end{figure}
+
+We have a number of forests for each ensemble member, differing in driving influences by a different local climate. We use regional mean temperature (T) and precipitation (P) for each of the forests the Amazon, central Africa and Southeast Asia as additional inputs to augment our original design matrix of land surface parameters, X. Regional extent of each of the broadleaf forests can be found in the supplementary material.
+
+These new inputs are outputs of the model when run at the original inputs X, and are influenced by the 10 atmospheric parameters perturbed in a previous ensemble, summarised in the ``beta" parameter. We cannot control them directly and thus ensure that they lie in a latin hypercube configuration. We do however hope that they represent a wide spread of model behaviour, given wide perturbations of the input parameters.
+
 
 
 \subsection{HEADING}
