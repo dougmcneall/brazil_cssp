@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013) (format=pdflatex 2013.8.16)  8 APR 2019 16:34
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013) (format=pdflatex 2013.8.16)  9 APR 2019 10:01
 entering extended mode
  \write18 enabled.
  file:line:error style messages enabled.
@@ -966,53 +966,191 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
 LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <10> not available
 (Font)              Font shape `T1/ptm/b/n' tried instead on input line 113.
-LaTeX Font Info:    Try loading font information for T1+phv on input line 119.
+LaTeX Font Info:    Try loading font information for T1+phv on input line 118.
 
 (/usr/local/texlive/2013/texmf-dist/tex/latex/psnfss/t1phv.fd
 File: t1phv.fd 2001/06/04 scalable font definitions for T1/phv.
 )
 LaTeX Font Info:    Font shape `T1/phv/m/n' will be
-(Font)              scaled to size 8.54997pt on input line 119.
+(Font)              scaled to size 8.54997pt on input line 118.
  [1
 
-{/usr/local/texlive/2013/texmf-var/fonts/map/pdftex/updmap/pdftex.map}] [2pdfTe
-X warning (ext4): destination with the same identifier (name{appendix.A}) has b
-een already used, duplicate ignored
+{/usr/local/texlive/2013/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+
+./McNeall_augmented.tex:135: Package inputenc Error: Unicode char \u8:“i not se
+t up for use with LaTeX.
+
+See the inputenc package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.135 ...is problem is sometimes referred to as “i
+                                                  dentifiability”, but other...
+
+? 
+
+./McNeall_augmented.tex:135: Package inputenc Error: Unicode char \u8:”, not se
+t up for use with LaTeX.
+
+See the inputenc package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.135 ...metimes referred to as “identifiability”,
+                                                   but otherwise known as “e...
+
+? 
+
+./McNeall_augmented.tex:135: Package inputenc Error: Unicode char \u8:“e not se
+t up for use with LaTeX.
+
+See the inputenc package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.135 ...entifiability”, but otherwise known as “e
+                                                  quifinality”, or the “dege...
+
+? 
+
+./McNeall_augmented.tex:135: Package inputenc Error: Unicode char \u8:”, not se
+t up for use with LaTeX.
+
+See the inputenc package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.135 ...”, but otherwise known as “equifinality”,
+                                                   or the “degeneracy” of mo...
+
+? 
+
+./McNeall_augmented.tex:135: Package inputenc Error: Unicode char \u8:“d not se
+t up for use with LaTeX.
+
+See the inputenc package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.135 ...erwise known as “equifinality”, or the “d
+                                                  egeneracy” of model error ...
+
+? 
+
+./McNeall_augmented.tex:135: Package inputenc Error: Unicode char \u8:”o not se
+t up for use with LaTeX.
+
+See the inputenc package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.135 ... as “equifinality”, or the “degeneracy” o
+                                                  f model error and paramete...
+
+? 
+
+Package lineno Warning: Linenumber reference failed, 
+(lineno)                rerun to get it right.
+
+[2]
+./McNeall_augmented.tex:145: Misplaced alignment tab character &.
+l.145 ...alised in a Bayesian setting by Kennedy &
+                                                   O’Hagan (2001). The autho...
+
+? 
+
+./McNeall_augmented.tex:145: Package inputenc Error: Unicode char \u8:’H not se
+t up for use with LaTeX.
+
+See the inputenc package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.145 ...ed in a Bayesian setting by Kennedy & O’H
+                                                  agan (2001). The authors s...
+
+? 
+
+./McNeall_augmented.tex:149: Package inputenc Error: Unicode char \u8:’H not se
+t up for use with LaTeX.
+
+See the inputenc package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.149 Brynjarsdottir and O’H
+                            agan (2016) argued that only by accounting for m...
+
+? 
+[3]
+
+LaTeX Warning: Reference `' on page 4 undefined on input line 165.
+
+
+LaTeX Warning: Reference `' on page 4 undefined on input line 165.
+
+
+LaTeX Warning: Reference `' on page 4 undefined on input line 165.
+
+
+LaTeX Warning: Reference `' on page 4 undefined on input line 165.
+
+
+LaTeX Warning: Reference `' on page 4 undefined on input line 165.
+
+
+LaTeX Warning: Reference `' on page 4 undefined on input line 165.
+
+
+LaTeX Warning: Reference `' on page 4 undefined on input line 165.
+
+
+LaTeX Warning: Reference `' on page 4 undefined on input line 165.
+
+[4] [5] [6pdfTeX warning (ext4): destination with the same identifier (name{app
+endix.A}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.202 \begin{thebibliography}{}
+l.241 \begin{thebibliography}{}
                                pdfTeX warning (ext4): destination with the same
  identifier (name{appendix.A}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.202 \begin{thebibliography}{}
-                               ] [3]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 384.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 384.
+l.241 \begin{thebibliography}{}
+                               ] [7]
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 423.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 423.
  (./McNeall_augmented.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 384.
-Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 384.
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 384.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 423.
+Package atveryend Info: Empty hook `AtEndAfterFileList' on input line 423.
+
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 423.
  ) 
 Here is how much of TeX's memory you used:
- 10196 strings out of 493315
- 144717 string characters out of 6137904
- 262828 words of memory out of 5000000
- 13422 multiletter control sequences out of 15000+600000
+ 10209 strings out of 493315
+ 144786 string characters out of 6137904
+ 265857 words of memory out of 5000000
+ 13431 multiletter control sequences out of 15000+600000
  38141 words of font info for 63 fonts, out of 8000000 for 9000
  957 hyphenation exceptions out of 8191
- 43i,5n,40p,332b,445s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 43i,5n,40p,1574b,449s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2013/texmf-dist/fonts/enc/dvips/base/8r.enc}</usr/local/t
 exlive/2013/texmf-dist/fonts/type1/urw/helvetic/uhvr8a.pfb></usr/local/texlive/
 2013/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></usr/local/texlive/2013/texmf
 -dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texlive/2013/texmf-dist/font
 s/type1/urw/times/utmri8a.pfb>
-Output written on McNeall_augmented.pdf (3 pages, 43870 bytes).
+Output written on McNeall_augmented.pdf (7 pages, 61329 bytes).
 PDF statistics:
- 65 PDF objects out of 1000 (max. 8388607)
- 55 compressed objects within 1 object stream
- 26 named destinations out of 1000 (max. 500000)
+ 83 PDF objects out of 1000 (max. 8388607)
+ 69 compressed objects within 1 object stream
+ 30 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 

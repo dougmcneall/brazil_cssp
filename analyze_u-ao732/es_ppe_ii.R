@@ -188,7 +188,6 @@ obs.runoff.amazon.upper = obs.runoff.amazon + (0.1 *obs.runoff.amazon)
 obs.runoff.amazon.lower = obs.runoff.amazon - (0.1 *obs.runoff.amazon)
 
 
-
 years = 1861:2014
 ysec = 60*60*24*365
 norm.vec = c(1e12, 1e12, 1e12/ysec , 1e12, 1e12, 1e9)
@@ -268,10 +267,13 @@ dev.off()
 # Plot normalised runoff
 runoff.raw = (load_ts_ensemble("data/ES_PPE_ii/Annual.Amazon.runoff.global_sum.txt"))[toplevel.ix, ]
 runoff.norm = sweep(runoff.raw, 2, STATS = precip, FUN = '/')
+
 runoff.norm.anom = anomalizeTSmatrix(runoff.norm, ix = 1:10)
 runoff.anom.sv = anomalizeTSmatrix(runoff.raw, ix = 1:20)/1e9
+runoff.change.sv = ts.ensemble.change(runoff.raw/1e9, startix = 1:20, endix = 135:154)
 runoff.norm.change = ts.ensemble.change(runoff.norm, startix = 1:20, endix = 135:154)
 
+#plot(runoff.raw[,1]/1e9, runoff.change.sv)
 
 pdf(width = 6, height = 8, file = 'graphics/ppe_ii/runoff_individual_normalized.pdf')
 plot(years, c(runoff.raw[100,], recursive = TRUE) / precip, type = 'l', ylim = c(0,1))
@@ -308,6 +310,13 @@ ensTShist(years, runoff.norm.anom,
 
 dev.off()
 
+
+# Load observations of changes in runoff calculated from Obidos 
+# river discharge data in gedney_rivers.R 
+load(file = '~/Documents/work/R/brazil_cssp/rivers/data/perc_change.Rdata')
+
+
+# Load a matrix of global carbon cycle data
 #fnvec = dir('data/ES_PPE_ii', pattern = 'Annual.Amazon')
 fnvec = c("Annual.Amazon.cs_gb.global_sum.txt",
           "Annual.Amazon.cv.global_sum.txt",
@@ -431,7 +440,6 @@ legend('topright', lty = 'solid', col = 'red',
 dev.off()
 
 
-
 # There's a relationship between runoff starting value and runoff change, but
 # not sure about the causality.
 runoff.start = runoff[runoff.ix, 1]
@@ -441,6 +449,24 @@ runoff.start = runoff[runoff.ix, 1]
 # Need to line this up with dates from observations.
 # (1928 to 2014)
 runoff.change = ts.ensemble.change(runoff[runoff.ix, ], 1:20, 135:154)
+
+low.fit = lowess(x = runoff.start, y = runoff.change)
+low.pred = predict()
+
+pdf(width = 7, height = 6, file = 'graphics/ppe_ii/runoff_start_v_change.pdf')
+par(las = 1, mar = c(5,5,3,1))
+plot(runoff.start, runoff.change, col = 'darkgrey', pch = 19,
+     xlab = 'Runoff starting value',
+     ylab = '',
+     axes = FALSE
+     )
+lines(low.fit$x, low.fit$y, col = 'black', lwd = 2)
+axis(1)
+axis(2)
+legend('topleft', legend = 'lowess fit', lwd = 2, col = 'black', bty = 'n')
+title(ylab = 'Runoff change 1860 - 2014', line = 4)
+
+dev.off()
 
 obidos.start.ix = which(years ==1928)
 runoff.change.obidos = ts.ensemble.change(runoff[runoff.ix, ],
@@ -478,9 +504,6 @@ precip.change.prop = (precip.sv.recent - precip.sv.obs.start ) / precip.sv.obs.s
 runoff.change.as.prop.precip.change = 
   (runoff.end - runoff.initial) / (precip.sv.recent - precip.sv.obs.start ) 
 
-
-
-load(file = '~/Documents/work/R/brazil_cssp/rivers/data/perc_change.Rdata')
 
 pdf(file = 'graphics/ppe_ii/runoff_change_hist.pdf', width = 6, height = 9)
 par(mfrow = c(5,1), fg = 'darkgrey', xaxs = 'i', yaxs = 'i', las = 1)
@@ -551,9 +574,35 @@ no_co2_runoff.change.obidos = ts.ensemble.change(no_co2_runoff[no_co2_runoff.ix,
 
 hist(no_co2_runoff.change.obidos)
 
+makeTransparent<-function(someColor, alpha=100)
+{
+  newColor<-col2rgb(someColor)
+  apply(newColor, 2, function(curcoldata){rgb(red=curcoldata[1], green=curcoldata[2],
+                                              blue=curcoldata[3],alpha=alpha, maxColorValue=255)})
+}
+
+xlim = c(0.01,0.03)
+ylim = c(0,150)
+ticksize = 0.09
+par(las = 0)
+pdf(file = 'graphics/ppe_ii/no_co2_runoff_change_constrained.pdf', width = 6, height = 4)
+hist(runoff.change.obidos, xlim = xlim, ylim = ylim, col = 'lightgrey',
+     main = 'Level 0 constraint', xlab = 'Amazon runoff change (Sv)')
+hist(no_co2_runoff.change.obidos, col = makeTransparent('tomato2', 70), add = TRUE)
+
+legend('topleft', legend = c('runoff obs. (Obidos)', 'precipitation obs.'), col = c('red', 'blue'), bty = 'n', pch = '|', pt.cex = 1.2,
+       pt.lwd = 2)
+legend('topright', legend = c('Standard', 'No CO2 rise'), 
+       fill = c('grey', makeTransparent('tomato2', 60)), bty = 'n')
+rug(discharge.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
+rug(precip.sv.change, col = 'blue', lwd = 3, ticksize = ticksize)
+
+dev.off()
+
+
+
 
 # Calculate the change in no co2 runoff as a proportion of initial runoff
-
 no_co2_runoff.initial = apply(no_co2_runoff[no_co2_runoff.ix, init.ix], 1, FUN = mean)
 no_co2_runoff.end = apply(no_co2_runoff[no_co2_runoff.ix, end.ix], 1, FUN = mean)
 
@@ -588,10 +637,6 @@ axis(2)
 dev.off()
 
 
-
-
-
-
 pdf('graphics/ppe_ii/runoff_no_co2.pdf', width = 8, height = 5 )
 par(las = 1)
 ensTShist(years, no_co2_runoff, 
@@ -608,19 +653,28 @@ precip.diff.sv = precip.sv - mean(precip.sv[1:10], na.rm = TRUE)
 # Express everything in Sverdrups
 runoff.sv = runoff.raw/1e+9
 runoff.diff = runoff.sv[1:300, ] - no_co2_runoff
+
+no.co2.good.ix = which(no_co2_runoff[,1] > 0.08)
+
+matplot(t(runoff.diff[no.co2.good.ix, ]), type = 'l')
 runoff.diff.ix <- which(abs(runoff.diff[,1]) < 1e-05)
+
+excluded.ix  = which(no_co2_runoff[runoff.diff.ix ,1] < 0.08)
 
 # It looks like the ensemble members might not be lined up?
 # Check that the design for the first ensemble is the same as for the second.
 # [Checked and looks the same]
-pdf('graphics/ppe_ii/runoff_diff_from_no_co1.pdf', width = 8, height = 5 )
+
+colvec = rep('grey', length(runoff.diff.ix))
+colvec[excluded.ix] <- 'red'
+pdf('graphics/ppe_ii/runoff_diff_from_no_co2_sv.pdf', width = 8, height = 5 )
 par(las = 1)
 ensTShist(years, runoff.diff[runoff.diff.ix, ], 
-          colvec = linecols[c(1,3,4)], 
-          histcol = linecols[3],
+          colvec = colvec, 
+          histcol = 'grey',
           ylab = '', xlab = '',
           grid = FALSE, 
-          mainvec = 'Amazon Runoff difference from no co2 run')
+          mainvec = 'Amazon Runoff difference from no-CO2 run')
 
 dev.off()
 
@@ -1192,20 +1246,20 @@ hist(runoff.change.obidos, xlim = xlim, col = 'lightgrey',
      main = 'Level 0 constraint', xlab = 'Amazon runoff change (Sv)')
 legend('topleft', legend = c('runoff obs.', 'precipitation obs.'), col = c('red', 'blue'), bty = 'n', pch = '|', pt.cex = 1.2,
        pt.lwd = 2)
-rug(runoff.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
+rug(discharge.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
 rug(precip.sv.change, col = 'blue', lwd = 3, ticksize = ticksize)
 
 hist(runoff.change.obidos.constained$mean, xlim = xlim, col = 'lightgrey', 
      main = 'Level 1 constraint', xlab = 'Amazon runoff change (Sv)')
-rug(runoff.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
+rug(discharge.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
 rug(precip.sv.change, col = 'blue', lwd = 3, ticksize = ticksize)
 hist(runoff.change.obidos.constained2$mean, xlim = xlim,col = 'lightgrey',
      main = 'Level 2 constraint', xlab = 'Amazon runoff change (Sv)')
-rug(runoff.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
+rug(discharge.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
 rug(precip.sv.change, col = 'blue', lwd = 3, ticksize = ticksize)
 hist(runoff.change.obidos.constained3$mean, xlim = xlim,col = 'lightgrey',
      main = 'Level 3 constraint', xlab = 'Amazon runoff change (Sv)')
-rug(runoff.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
+rug(discharge.obs.abs.change.sv * (1/0.77), col = 'red', lwd = 3, ticksize = ticksize)
 rug(precip.sv.change, col = 'blue', lwd = 3, ticksize = ticksize)
 dev.off()
 

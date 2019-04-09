@@ -12,6 +12,8 @@ library(ncdf4)
 #obidos = read.table('obidos.dat', skip = 6, header = TRUE, na.strings = '-999.0')
 #plot(obidos$datem, obidos$rflowobs, type = 'l', xlim = c(1960, 2020))
 
+fac = 1e6
+
 obidos = read.table("data/obidos.dat", 
                     skip = 6, header = TRUE, na.strings = "-999.0")
 
@@ -36,12 +38,12 @@ obidos.merged.ts = ts(obidos.merged, start = start(obidos.flow.ts), frequency = 
 # Aggregate to annual
 obidos.merged.agg = aggregate(obidos.merged.ts , freq = 1, FUN = mean, na.rm = TRUE)
 
-flow.mean = mean(obidos.merged.ts , na.rm = TRUE)
-flow.mean.all.basin.sv = (flow.mean/fac) * (1/0.77)
+discharge.mean = mean(obidos.merged.ts , na.rm = TRUE)
+discharge.mean.all.basin.sv = (discharge.mean/fac) * (1/0.77)
 
 ma <- function(x,n=20){filter(x,rep(1/n,n), sides=2)}
 yr = 1900:2014
-fac = 1e6
+
 
 pdf(file = 'graphics/obidos_river_flow.pdf', width = 9, height = 5)
 par(las = 1)
@@ -63,12 +65,12 @@ start.flow = mean(obidos.merged.agg[28:47])
 end.flow = mean(obidos.merged.agg[94:114])
 
 
-runoff.obs.abs.change.sv = (end.flow - start.flow) / fac
-runoff.obs.perc.change = ((end.flow - start.flow) / start.flow) * 100
+discharge.obs.abs.change.sv = (end.flow - start.flow) / fac
+discharge.obs.perc.change = ((end.flow - start.flow) / start.flow) * 100
 
 save(runoff.obs.perc.change,
-	runoff.obs.abs.change.sv,
-	flow.mean.all.basin.sv,
+	discharge.obs.abs.change.sv,
+	discharge.mean.all.basin.sv,
  	file = 'data/perc_change.Rdata')
 
 # NetCDF stuff.
