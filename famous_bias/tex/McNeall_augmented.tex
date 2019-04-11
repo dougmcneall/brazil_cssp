@@ -203,7 +203,7 @@ For temperature observations we use the CRU global monthly surface temperature c
 
 Figure \ref{fig:map_comparison} Observations of broadleaf forest fraction on their native grid (top), and regridded to the FAMOUS grid (bottom).
 
-A plot of regional mean temperature and precipitation in the tropical forest regions in the FAMOUS ensemble (figure \cite{fig:fraction_vs_temp_precip_pcolcor}) indicates the form of the impact that the regional climate has on forest fraction in the climate model. Central African and Southeast Asian climates in the model simulations run in a sweep across the middle of the plot, from dry and cool to wet and warm. 
+A plot of regional mean temperature and precipitation in the tropical forest regions in the FAMOUS ensemble (figure \ref{fig:fraction_vs_temp_precip_pcolcor}) indicates the form of the impact that the regional climate has on forest fraction in the climate model. Central African and Southeast Asian climates in the model simulations run in a sweep across the middle of the plot, from dry and cool to wet and warm. 
 
 It appears that a wetter climate - which would be expected to stabilize forests - broadly compensates for the forest reductions induced by a warmer climate. Within the ensemble of Central African forests for example, forest fraction increases towards the ``cooler, wetter" (top left) part of the climate phase space. Beyond a certain value however, there are no simulated forests in this climatic region. It is clear from the plot that while central African and Southeast Asian forests are simulated in the large part considerably warmer than recent observations, they are also simulated considerably wetter, which might be expected to compensate forest stability. In contrast, while simulated considerably warmer, the Amazon is also slightly drier than recent observations, which might further reduce forest stability.
 
@@ -230,10 +230,90 @@ We will use the emulator to describe the relationship between land surface param
 \label{fig:dag}
 \end{figure}
 
-We have a number of forests for each ensemble member, differing in driving influences by a different local climate. We use regional mean temperature (T) and precipitation (P) for each of the forests the Amazon, central Africa and Southeast Asia as additional inputs to augment our original design matrix of land surface parameters, X. Regional extent of each of the broadleaf forests can be found in the supplementary material.
+We have a number of forests for each ensemble member, differing in driving influences by a different local climate. We use regional mean temperature, $T$, and precipitation, $P$, for each of the forests the Amazon, central Africa and Southeast Asia as additional inputs to augment our original design matrix of land surface parameters, X. Regional extent of each of the broadleaf forests can be found in the supplementary material.
 
-These new inputs are outputs of the model when run at the original inputs X, and are influenced by the 10 atmospheric parameters perturbed in a previous ensemble, summarised in the ``beta" parameter. We cannot control them directly and thus ensure that they lie in a latin hypercube configuration. We do however hope that they represent a wide spread of model behaviour, given wide perturbations of the input parameters.
+These new inputs are outputs of the model when run at the original inputs $X$, and are influenced by the 10 atmospheric parameters perturbed in a previous ensemble, summarised in the ``beta" parameter. We cannot control them directly and thus ensure that they lie in a latin hypercube configuration. We do however hope that they represent a wide spread of model behaviour, given wide perturbations of the input parameters.
 
+With $n = 100$ ensemble members, we form each  $n \times 1$ vector of temperature and precipitation and form an $n \times 2$  matrix of climate variables for the Amazon $C_{AZ} = [T_{AZ} P_{AZ}]$, Central Africa $C=[T_{AF} P_{AF}]$ and Southeast Asia $C_{AS} = [T_{AS} P_{AS}]$. 
+ 
+ We use these to augment the original $n \times p$ input matrix $X$, creating a unique input location for each forest. We then stack these augmented input matrices together to form a single input matrix X'.
+\begin{equation}
+X' = \begin{bmatrix}
+X & C_{AZ} \\
+X & C_{AF}  \\
+X & C_{AS}
+\end{bmatrix}
+\end{equation}
+
+From an initial ensemble design matrix with $n=100$ members and $p=7$ inputs, we now have a design with $n=300$ members and $p=9$ inputs. Each member with a replicated set of initial input parameters (e.g members $[1, 101, 201]$), differ only in the $T$ and $P$ values. Figure \ref{fig:augmented_emulator} shows the composition of the resulting input matrix and output vector.
+
+\begin{figure}[t]
+\includegraphics[width=12cm]{../graphics/augmented_emulator.pdf}
+\caption{In a standard emulator setup (left), training data consists of an input matrix $X$ and corresponding simulator output $y$. A new emulator $g_{1}, \ldots, ()g_{n}()$ is trained for each output $y_{1}, \ldots, y_{n}$ of interest. In the augmented emulator, output from the simulator $C_{1}, \ldots, C_{3}$ augments the design matrix, with the initial inputs $X$ repeated.}
+\label{fig:augmented_emulator}
+\end{figure}
+
+
+Where in M16, we built an independent emulator for each output (i.e. regional forest fraction), we now build a single emulator for all forest fractions simultaneously given input parameters, temperature and precipitation. The output vector y for the tropical forests has gone from being 3 sets of 100 values, to a single vector $[y_{1}, \ldots,  y_{n}]$ of length 300.
+
+We model forest fraction $[y_{1}, \ldots, y_{n}]$ as a function of $X'$ using the Gaussian process emulator of package DiceKriging \citep{roustant20XXdicekriging} in the R statistical language and environment for statistical computing. Details of the emulator can be found in the supplementary material.
+
+\subsection{Verifying the augmented emulator}
+To verify that the augmented emulator adequately reproduces the simulator behaviour, we use a leave-one-out metric. For this metric, we sequentially remove one simulator run from the ensemble, train the emulator on the remaining ensemble members and predict the held-out run. We present the predicted members and the calculated uncertainty plotted against the actual ensemble values in figure \cite{fig:true_loo_all}.
+
+\begin{figure}[t]
+\includegraphics[width=12cm]{../graphics/true_loo_all.pdf}
+\caption{Leave-one-out cross validation plot, with the true value of the simulator output on the x-axis, and predicted output on the y-axis. Vertical lines indicate $\pm$2 standard deviations.
+}
+\label{fig:true_loo_all}
+\end{figure}
+
+We see no reason to doubt that the emulator provides a good prediction and accurate uncertainty estimates for prediction at inputs points not yet run. We use the mean of the absolute value of the difference between the emulator prediction and corresponding held-out value to calculate the Mean Absolute Error of cross-validation prediction (MAE). Prediction error and uncertainty estimates remain approximately stationary across all tropical forests and values of forest fraction. The mean absolute error of prediction using this emulator is a little under 0.03, or 3\% of the maximum possible value of the ensemble.
+
+When compared against the regular emulator using just the land surface inputs, the augmented emulator performs well. The augmented emulator has a mean absolute error of prediction of 0.03 or 3\% of the maximum possible value of the ensemble. The regular emulator built individually for each of the forests has a mean absolute error value of 0.058 - nearly double that of the augmented emulator. A breakdown of the mean absolute error of the emulator on a per-forest basis can be seen in table \ref{tab:mae}
+
+
+%% TWO-COLUMN TABLE
+
+%t
+\begin{table*}[t]
+\caption{Mean absolute error (MAE) rounded to the first significant figure for the regular emulator, using just the seven land surface inputs, and the augmented emulator, including temperature and precipitation.}
+\begin{tabular}{lrr}
+\tophline
+
+Forest                & Regular emulator MAE & Augmented emulator MAE \\
+\middlehline
+Amazon              & 0.05                              & 0.03                                     \\
+Southeast Asia  & 0.06                               & 0.03                                    \\
+Central Africa    & 0.06                               & 0.03                                      \\
+All                      & 0.06                              & 0.03                                       \\
+
+\bottomhline
+\end{tabular}
+\belowtable{} % Table Footnotes
+\label{tab:mae}
+\end{table*}
+
+We test the reliability of uncertainty estimates of the emulator by checking that the estimated probability distributions for held-out ensemble members match the true error distributions in the leave-one-out exercise. We create a rank histogram (see e.g. Hamill (2001) \cite{hamill2001interpretation}) for predictions, sampling 1000 times from each Gaussian prediction distribution, and plotting the rank of the actual prediction in that distribution. The distribution of these ranks overall predictions should be uniform if the uncertainty estimates are reliable. Consistent overestimation of uncertainty will produce a peaked histogram, while systematic underestimation of uncertainty will produce a u-shaped histogram. The rank histogram produced by this set of predictions (figure \ref{fig:rankhist}) is close to a uniform distribution, indicating reliable predictions.
+
+\begin{figure}[t]
+\includegraphics[width=12cm]{../graphics/rankhist.pdf}
+\caption{Rank histogram of leave-one-out predictions. For each prediction of a held-out ensemble member, we sample 1000 points from the Gaussian prediction distribution, and then record where the true held-out ensemble member ranks in that distribution. We plot a histogram of the ranks for all 300 ensemble members. A uniform distribution of ranks indicates that uncertainty estimates of the emulator are well calibrated.
+}
+\label{fig:rankhist}
+\end{figure}
+
+\section{Analyses}
+
+\subsection{Sensitivity analysis}
+The emulator allows us to measure the sensitivity of forest fraction to the land surface input parameters simultaneously with climate variables temperature and precipitation. We measure the one-at-a-time sensitivity to parameters and climate variables, using the emulator to predict changes in forest fraction as each variable is changed from the lowest to highest setting in turn, with all other parameters at the default settings or observed values. We present the results in figure \ref{fig:sensitivity_TP_all}. Parameters NL0 and V\_CRIT\_ALPHA and climate variables temperature and precipitation exert strong influences of similar magnitudes on forest fraction. Shaded regions represent the uncertainty of the sensitivity to each parameter, due to estimated emulator uncertainty of $\pm$ 2 standard deviations. This sensitivity measure does not include the extra uncertainty due to the fact that the relationships will change depending on the position of the other parameters. We do however get to see a measure of how temperature and precipitation affect the marginal response of the other parameters, as the observed climates of each forest are different. We clearly see that the response of the forest fraction to e.g. NL0 depends on climate - the forests fraction response is a noticeably different shape when varied under the mean climate of the South East Asian region.
+
+\begin{figure}[t]
+\includegraphics[width=12cm]{../graphics/sensitivity_TP_all.pdf}
+\caption{One-at-a-time sensitivity of forest fraction variation of each parameter and climate variable in turn across the entire ensemble range. All other parameters or variables are held at their default values while each parameter is varied. Solid lines represent the emulator mean and shaded areas represent $\pm$ 2 standard deviations of emulator uncertainty.
+}
+\label{fig:sensitivity_TP_all}
+\end{figure}
 
 
 \subsection{HEADING}
