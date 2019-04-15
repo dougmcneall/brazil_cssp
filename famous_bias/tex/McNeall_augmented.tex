@@ -165,13 +165,13 @@ A well simulated and vigorous Amazon forest at the end of the spinup phase of a 
 
 This paper revisits and extends the analysis of M16 to attempt to simultaneously (1) assess the impact of a bias corrected corrected climate on the Amazon forest and (2) to identify regions of input parameter space that should be classified as plausible, given a corrected Amazon climate. To bias correct the climate we develop a new method to augment a Gaussian process emulator, with simulator outputs acting as inputs to the emulator alongside the standard input parameters.  We use simulated output of forests at different geographical locations to train the emulator, describing a single relationship between the climate of the simulator, the land surface inputs and the forest fraction. In doing so, we develop a technique that might be used to bias correct existing ensembles of coupled models, allowing a more computationally efficient method for final system-tuning of models. 
 
-In section \ref{}, we review the literature on the possible causes of the low Amazon forest fraction in FAMOUS. In section \ref{}, we describe how we use the temperature and precipitation to augment the Gaussian process emulator. In section \ref{} we use the emulator to estimate the sensitivity of forest fraction to changes in land surface and climate parameters. In section \ref{} we use the augmented emulator to bias correct the climates of the forest and examine the effect of that bias correction on the input space that is deemed statistically acceptable in a history matching exercise. In section \ref{} we search for regions of parameter space where the bias corrected simulator might perform better than at the default parameters. In section \ref{} we look at regions of climate space where the default parameters would produce statistically acceptable forests. Finally, we offer some discussion of our results in section \ref{} and conclusions in section \ref{}.
+In section \ref{sec:climate_and_frac}, we review the literature on the possible causes of the low Amazon forest fraction in FAMOUS. In section \ref{ssec:augmented}, we describe how we use the temperature and precipitation to augment the Gaussian process emulator. In section \ref{ssec:sensitivity} we use the emulator to estimate the sensitivity of forest fraction to changes in land surface and climate parameters. In section \ref{ssec:bias_correct} we use the augmented emulator to bias correct the climates of the forest and examine the effect of that bias correction on the input space that is deemed statistically acceptable in a history matching exercise. In section \ref{ssec:better_than_default} we search for regions of parameter space where the bias corrected simulator might perform better than at the default parameters. In section \ref{ssec:acceptable} we look at regions of climate space where the default parameters would produce statistically acceptable forests. Finally, we offer some discussion of our results in section \ref{sec:discussion} and conclusions in section \ref{sec:conclusions}.
 
-\section{Climate and forest fraction in FAMOUS}
+\section{Climate and forest fraction in FAMOUS}\label{sec:climate_and_frac}
 
-Previous studies have concluded that the climate state has an influence on the Amazon rainforest. Much of that work has been motivated by the apparent risk of dieback of the Amazon forest posed by a changing climate [e.g. \cite{malhi2008climate, cox2004amazonian}].  We assume here that factors that might precipitate a future change in the simulated state of the Amazon rainforest might also influence the simulation of the steady-state preindustrial forest in FAMOUS. Parameter perturbations and CO2 concentrations have also been shown to influence the simulation of tropical forests in climate models, with increases in CO2 fertilisation and associated increased water use efficiency through stomatal closure offsetting the negative impacts of purely climatic changes. A metric linked to rainforest sustainability by \cite{malhi2009exploring} is Maximum Cumulative Water Deficit, which describes the most negative value of climatological water deficit measured over a year. In a similar vein Good et al. (2011, 2013) find that in Hadley Centre models, sustainable forest is linked to dry-season length, a metric which encompasses both precipitation and temperature, along with sensitivity to increasing CO2 levels. No forest is found in regions that are too warm or too dry, and there is a fairly distinct boundary between a sustainable and non-sustainable forest. Galbraith et al (2010) found that temperature, precipitation and humidity had greatly varying influences, and by different mechanisms on changes in vegetation carbon in the Amazon across a number of models, but that rising CO2 mitigated losses in biomass. Poulter et al. (2010) found that the response of the Amazon forest to climate change in the land surface model LPJml was sensitive to perturbations in parameters, but that the dynamics of a dieback in the rainforest was robust across those perturbations. In that case, the main source of uncertainty of dieback was uncertainty in climate scenario. \cite{boulton2017exploring} found that temperature threshold and leaf area index parameters both have an impact on the forest sustainability under projections of climate change in the Earth system version of HadCM3.
+Previous studies have concluded that the climate state has an influence on the Amazon rainforest. Much of that work has been motivated by the apparent risk of dieback of the Amazon forest posed by a changing climate [e.g. \cite{malhi2008climate, cox2004amazonian}].  We assume here that factors that might precipitate a future change in the simulated state of the Amazon rainforest might also influence the simulation of the steady-state preindustrial forest in FAMOUS. Parameter perturbations and CO$_{2}$ concentrations have also been shown to influence the simulation of tropical forests in climate models, with increases in CO$_{2}$ fertilisation and associated increased water use efficiency through stomatal closure offsetting the negative impacts of purely climatic changes. A metric linked to rainforest sustainability by \cite{malhi2009exploring} is Maximum Cumulative Water Deficit, which describes the most negative value of climatological water deficit measured over a year. In a similar vein \cite{Good2011, Good2013} find that in Hadley Centre models, sustainable forest is linked to dry-season length, a metric which encompasses both precipitation and temperature, along with sensitivity to increasing CO$_{2}$ levels. No forest is found in regions that are too warm or too dry, and there is a fairly distinct boundary between a sustainable and non-sustainable forest. \cite{Galbraith2010} found that temperature, precipitation and humidity had greatly varying influences, and by different mechanisms on changes in vegetation carbon in the Amazon across a number of models, but that rising CO$_{2}$ mitigated losses in biomass. \cite{POULTER2010} found that the response of the Amazon forest to climate change in the land surface model LPJml was sensitive to perturbations in parameters, but that the dynamics of a dieback in the rainforest was robust across those perturbations. In that case, the main source of uncertainty of dieback was uncertainty in climate scenario. \cite{boulton2017exploring} found that temperature threshold and leaf area index parameters both have an impact on the forest sustainability under projections of climate change in the Earth system version of HadCM3.
 
-\subsection{Biases in FAMOUS}
+\subsection{Biases in FAMOUS}\label{ssec:biases}
 
 M16 speculated that both local climate biases and missing or incorrect processes in the land surface model - such as missing deep rooting in the Amazon - might be the cause of the simulated low forest fraction in the Amazon region at the end of the pre-industrial period in an ensemble of the climate model FAMOUS. In this study we use the ensemble of FAMOUS previously used in M16, to attempt to find and correct the cause of persistent low forest fraction in the amazon, identified in that paper. 
 
@@ -216,10 +216,10 @@ It appears that a wetter climate - which would be expected to stabilize forests 
 \end{figure}
 
 
-\section{Methods}
+\section{Methods}\label{sec:methods}
 The climate model FAMOUS is computationally expensive enough that we cannot run it for a large enough number of input parameter combinations to adequately explore parameter space and find model biases. To increase computational efficiency we build a Gaussian process emulator: a statistical function that predicts the output of the model at any input, with a corresponding estimate of uncertainty. The emulator models climate model output $y$ as a function $g()$ of inputs $x$ so that $y = g(x)$. It is trained on an ensemble of model runs at set of inputs called the design matrix, denoted X, giving a sample of model output. The configuration of the design matrix is a latin hypercube \citep{mckay1979comparison}, as used in  e.g. \cite{gregoire2010optimal,williams2013optimising}, with sample input points chosen to fill input parameter space efficiently and therefore sample relationships between input parameters effectively.
 
-\subsection{An augmented emulator}
+\subsection{An augmented emulator}\label{ssec:augmented}
 Our strategy is to augment the design matrix of input parameters X with corresponding atmospheric climate model output that might have an impact on the modelled land surface. We build an emulator that models the effects of both input parameters and climate on forest fraction. We then use the augmented emulator to bias correct each forest in turn.
 
 We will use the emulator to describe the relationship between land surface parameters, atmospheric variables that summarise the action of hidden atmospheric parameters, and the broadleaf forest fraction. The relationships between these variables are summarised in figure \ref{fig:dag}. 
@@ -259,7 +259,7 @@ Where in M16, we built an independent emulator for each output (i.e. regional fo
 
 We model forest fraction $[y_{1}, \ldots, y_{n}]$ as a function of $X'$ using the Gaussian process emulator of package DiceKriging \citep{roustant2012dicekriging} in the R statistical language and environment for statistical computing. Details of the emulator can be found in the supplementary material.
 
-\subsection{Verifying the augmented emulator}
+\subsection{Verifying the augmented emulator}\label{ssec:verifying}
 To verify that the augmented emulator adequately reproduces the simulator behaviour, we use a leave-one-out metric. For this metric, we sequentially remove one simulator run from the ensemble, train the emulator on the remaining ensemble members and predict the held-out run. We present the predicted members and the calculated uncertainty plotted against the actual ensemble values in figure \cite{fig:true_loo_all}.
 
 \begin{figure}[t]
@@ -304,9 +304,9 @@ We test the reliability of uncertainty estimates of the emulator by checking tha
 \label{fig:rankhist}
 \end{figure}
 
-\section{Analyses}
+\section{Analyses}\label{sec:analyses}
 
-\subsection{Sensitivity analysis}
+\subsection{Sensitivity analysis}\label{ssec:sensitivity}
 The emulator allows us to measure the sensitivity of forest fraction to the land surface input parameters simultaneously with climate variables temperature and precipitation. We measure the one-at-a-time sensitivity to parameters and climate variables, using the emulator to predict changes in forest fraction as each variable is changed from the lowest to highest setting in turn, with all other parameters at the default settings or observed values. We present the results in figure \ref{fig:sensitivity_TP_all}. Parameters NL0 and V\_CRIT\_ALPHA and climate variables temperature and precipitation exert strong influences of similar magnitudes on forest fraction. Shaded regions represent the uncertainty of the sensitivity to each parameter, due to estimated emulator uncertainty of $\pm$ 2 standard deviations. This sensitivity measure does not include the extra uncertainty due to the fact that the relationships will change depending on the position of the other parameters. We do however get to see a measure of how temperature and precipitation affect the marginal response of the other parameters, as the observed climates of each forest are different. We clearly see that the response of the forest fraction to e.g. NL0 depends on climate - the forests fraction response is a noticeably different shape when varied under the mean climate of the South East Asian region.
 
 \begin{figure}[t]
@@ -325,7 +325,7 @@ A quantitative measure of sensitivity of the model output to parameters that doe
 \label{fig:fast_barplot}
 \end{figure}
 
-\subsection{The joint impacts of temperature and precipitation on forest fraction}
+\subsection{The joint impacts of temperature and precipitation on forest fraction}\label{ssec:joint}
 What impact do temperature and precipitation have on forest fraction together? We use the emulator from section \ref{ssec:emulator} and predict the simulator output across the entire range of simulated temperature and precipitation, while holding the other inputs at their default values. The marginal impacts of temperature and precipitation on forest fraction are clear in figure \ref{fig:taat_temp_precip_quilt}. Ensemble member temperature, precipitation and forest fraction, taken from figure \ref{fig:fraction_vs_temp_precip_pcolcor} are overplotted for comparison. Temperature and precipitation values are normalised to the range of the ensemble in this plot.
 
 \begin{figure}[t]
@@ -338,7 +338,7 @@ What impact do temperature and precipitation have on forest fraction together? W
 Cooler, wetter climates are predicted to increase forest fraction and drier, warmer climates lead to very low forest fraction values in some simulations. In general, South East Asian and Central African forests are simulated as warmer and wetter than their true-life counterparts. Moving any ensemble member to observed values of temperature and precipitation would not cross many contours of forest fraction value, and so ensemble members are simulated with a roughly accurate forest fraction. In contrast, the Amazon is simulated slightly drier, and considerably warmer than the observed Amazon and many ensemble members consequently have a lower forest fraction than observed. This figure provides strong evidence that a significant fraction of the bias in Amazon forest fraction is caused by a bias in simulated climate.
 
 
-\subsection{A climate bias correction approach}
+\subsection{A climate bias correction approach}\label{ssec:bc_approach}
 With an emulator that models the relationship between input parameters, local climate and the forest fraction, we can predict what would happen to forest fraction in any model simulation if the local climate was correct. In figure \ref{fig:dotchart_fractions}, for example, the predicted value is the forest fraction at the default set of land surface parameters, with the local temperature and precipitation corrected to the observed values. Central Africa becomes significantly drier, and a little cooler than the centroid of the ensemble. Southeast Asia becomes a little cooler and a little drier. The Amazon forest becomes a little wetter, and significantly cooler. The ensemble has a much larger spread of climates in central Africa than South East Asia or the Amazon.
 
 The bias correction reduces the difference between the modelled and observed Amazon forest fraction markedly, from -0.28 to -0.08. It makes the modelled forest in central Africa worse (-0.11 from -0.03), and slightly improves the SE Asian forest fraction (0.07 from 0.1). Overall, bias correcting the climate takes the mean absolute error at the default parameters from 0.14 to 0.09.
@@ -352,7 +352,7 @@ The bias correction reduces the difference between the modelled and observed Ama
 \end{figure}
 
 
-\subsection{History matching to learn about model discrepancy}
+\subsection{History matching to learn about model discrepancy}\label{ssec:history_matching}
 In this section we use history matching to learn about parts of input parameter space that are consistent with observations, and to find the causes of discrepancy in the model.
 
 History matching measures the statistical distance between an observation of a real-world process, and the emulated output of the climate model at any input setting. An input where the output is deemed too far from the observation is ruled ``implausible", and removed from consideration. Remaining inputs are conditionally accepted as ``Not Ruled Out Yet" (NROY), recognising that further information about the model or observations might yet rule them as implausible.
@@ -445,7 +445,7 @@ Central Africa         &    0.075 &  0.741  &   1 \\
 \bottomhline
 \end{tabular}
 \belowtable{} % Table Footnotes
-\label{tab:}
+\label{tab:nbc}
 \end{table*}
 
 
@@ -462,7 +462,7 @@ Central Africa         &    0.915 & 0.337  &   1 \\
 \bottomhline
 \end{tabular}
 \belowtable{} % Table Footnotes
-\label{tab:}
+\label{tab:bc}
 \end{table*}
 
 
@@ -478,11 +478,11 @@ Bias-corrected  & 31 & 28.3 \\
 \bottomhline
 \end{tabular}
 \belowtable{} % Table Footnotes
-\label{tab:}
+\label{tab:intersection}
 \end{table*}
 
 
-\subsection{Doing better than the default parameters}
+\subsection{Doing better than the default parameters}\label{ssec:better_than_default}
 We can use the emulator to find potential locations in parameter space where the difference between the modelled and observed forest fractions would be smaller than at the default parameters. Figure \ref{smaller_error_bc_default} shows the density of parameter settings in each 2-dimensional projection of the input space, where the emulator estimates the model performs better than at the default parameters, once bias correction has been applied. That is, the absolute difference between each estimated forest fraction and the observed values is smaller than the absolute difference of the mean estimate at the default parameters. Out of 100000 samples from the uniform hypercube defined by the range of the experiment design, only 2451, or around 2.5\% match this criterion and are plotted. This diagram might help guide further runs in the ensemble, choosing high density regions to run new ensemble members. The convergence of NL0 and V\_CRIT\_ALPHA seems particularly focussed, and suggests that a lower value of V\_CRIT\_ALPHA might be a way to reduce error in the forest fraction. There is another, although less densely populated region of high NL0 and V\_CRIT\_ALPHA that might fulfil the criteria of lower estimates of error for each forest. These regions would be good targets for supplementary runs of the climate model, and for particularly careful emulator checking. 
 
 
@@ -494,7 +494,7 @@ We can use the emulator to find potential locations in parameter space where the
 \end{figure}
 
 
-\subsection{Allowable climate at default parameters}
+\subsection{Allowable climate at default parameters}\label{ssec:allowable}
 We use history matching to find the set of regional mean climates that are most consistent with the observations for each tropical forest. Using the same values for model discrepancy (0), its associated uncertainty (1sd = 0.01), and observational uncertainty (0), we find the set of not-ruled-out-yet temperature and precipitation values when the remaining input parameters are held at their default values. Figure \ref{fig:nroy_climate} shows the density of not-ruled-out-yet points in the climate space for each of the observed forest fractions. We see that the Amazon and Central African forests might be well simulated in the model in a very wide range of cooler and wetter climates, with only the ``hot, dry" corner showing zero density of potential inputs that produce similar forest fraction to observations. The Southeast Asian forest fraction is matched by a swathe of inputs running diagonally through the centre of input space. Neither the hot-dry or cool-wet corners of input space produce forests that match the observations, though the warm-wet and cool-dry corners do.
 
 \begin{figure}[t]
@@ -505,8 +505,8 @@ We use history matching to find the set of regional mean climates that are most 
 \end{figure}
 
 
-\section{Discussion}
-\subsection{Simulating the Amazon}
+\section{Discussion}\label{sec:discussion}
+\subsection{Simulating the Amazon}\label{ssec:simulating}
 What does our study mean for the simulation of the Amazon rainforest? We have shown that the simulation of the broadleaf tropical forest in FAMOUS is almost as sensitive to temperature and precipitation as to any land surface parameter perturbation in the ensemble. It should be remembered however that the calculated sensitivities are dependent on the chosen limits of the parameter perturbations themselves. The precise order and size of sensitivities might change given updated parameter ranges. There is little doubt that the climate variables are a strong influence on broadleaf forest fraction, however. 
 
 This version of FAMOUS with the default parameter settings would successfully simulate the Amazon rainforest to within tolerable limits if regional climate biases were substantially reduced. As such, there is no need to invoke a missing process or processes in the land surface in order to explain the discrepancy. Further, there is no need to doubt that the default parameters are implausible and we have strengthened the case made by M16 that the low Amazon forest fraction is a result of poorly chosen parameters. There are also indications from the emulator that a small region of parameter space exists where there is even smaller overall error in the simulation, offering a target for exploration using further runs of the model.
@@ -516,7 +516,7 @@ There is a feedback from the land surface to the atmosphere implicitly included 
 It is possible that were we to include a process seen to be missing from the Amazon (such as deeper rooting of trees allowing them to thrive in drier climates), our map of NROY input space would alter again. Given that there is a measure of uncertainty in observations and the emulator, as well as the possibility of further compensating errors, we cannot rule out a model discrepancy such as a deep rooting process. The fact that the other forests do slightly less well when their climates are bias corrected points to a potential missing process in the model, compensated for by parameter perturbations. However, the impact of this missing process is likely much smaller than we might have estimated had we not taken the bias correction of the forest into account.
 
 
-\subsection{Uses for an augmented emulator}
+\subsection{Uses for an augmented emulator}\label{ssec:uses}
 By building an emulator that includes temperature and precipitation - traditionally used as climate model outputs - we are able to separate the tuning of one component of the model (the atmosphere) from another (the land surface). Perturbations to the atmospheric parameters, tested in a previous ensemble but not available to us except through an indicator parameter  are summarised as inputs through the climate of the model.
 
 We have used the augmented emulator as a translational layer between components of the model. The augmented emulator allows us to ask ``what would it mean for our choice of input parameters if the climate of the model in the Amazon region were correct?"This means that we will have less chance of ruling out parts of parameter space that are in fact perfectly good, or keeping those parts that are in fact implausible.
@@ -525,7 +525,7 @@ This sort of translational layer might be built as part of a model development p
 
 Our work here shows this process as an example. We have identified the importance of precipitation and temperature to the correct simulation of the Amazon forest, and flag them as priorities in future climate model development. We have identified regions of the space of these climate variables where the Amazon forest might thrive, and related that back to regions of land surface parameter space that might be targeted in future runs of the model.
 
-An augmented emulator could also be used directly to estimate the impacts and related uncertainty of climate change on forest fraction in the model, even in the presence of a significant model bias. After estimating the relationship between the uncertain parameters, climate, and the forest fraction, we could calculate the forest fraction at any climate, including those that might be found in the future. This would require a new ensemble of climate model runs, projecting the future forests under a number of (e.g.) atmospheric CO2 concentrations and parameter combinations. Any extra inputs that might impact the forest, such as atmospheric CO2 concentration, would need to be added to the training set of the emulator. It would be necessary that the training data included any climates that might be seen under the climate change scenario to be studied, as the emulator has much larger uncertainties if asked to extrapolate beyond the limits of the training data. The trajectory of vegetation states through time would also be an important element of the ensemble, as the vegetation state is path dependent. However there would be great potential to save a large number of runs, as not every parameter perturbation would have to be run with every projection scenario.
+An augmented emulator could also be used directly to estimate the impacts and related uncertainty of climate change on forest fraction in the model, even in the presence of a significant model bias. After estimating the relationship between the uncertain parameters, climate, and the forest fraction, we could calculate the forest fraction at any climate, including those that might be found in the future. This would require a new ensemble of climate model runs, projecting the future forests under a number of (e.g.) atmospheric CO$_{2}$ concentrations and parameter combinations. Any extra inputs that might impact the forest, such as atmospheric CO$_{2}$ concentration, would need to be added to the training set of the emulator. It would be necessary that the training data included any climates that might be seen under the climate change scenario to be studied, as the emulator has much larger uncertainties if asked to extrapolate beyond the limits of the training data. The trajectory of vegetation states through time would also be an important element of the ensemble, as the vegetation state is path dependent. However there would be great potential to save a large number of runs, as not every parameter perturbation would have to be run with every projection scenario.
 
 Such a set of runs would serve as a framework upon which a great many post hoc analyses could be done with the emulator. Once the set of runs was complete, they would effectively serve as the definitive version of the model - any new information that needed to be extracted from the model could in theory be found using the emulator. Not only might we be able to identify and correct important climate biases and their impact on the forest, but also update our estimates of forest change as we learned more about the uncertainty ranges of the uncertain  parameters and forcing trajectory.
 
@@ -535,7 +535,7 @@ Given that we overcome such technical barriers, we see no reason that such a lay
 
 There are also potential computational efficiencies in our approach of decoupling the tuning of two components (here the atmosphere and the land surface) in the model. A good rule of thumb is that a design matrix for building an emulator should have $O(10 \times p)$ training points, where p is the number of input parameters, in order to adequately sample parameter space to the extent it is possible to build a good emulator. With approximately 10 atmospheric and 7 land surface parameters, we would need O(170) runs. Here, we have summarised those 10 parameters as two outputs that have a material impact on the aspect of the land surface that we are interested in. Adding these two to the 7 inputs, we need $O(10 \times (2+7) = 90)$ runs, well covered by our available ensemble of 100 runs. 
 
-\conclusions
+\conclusions \label{sec:conclusions}
 
 We demonstrate that we can correct the simulation of the Amazon rainforest in the climate model FAMOUS by correcting the regional bias in the climate of the model with a Gaussian process emulator. We therefore find it unnecessary to invoke a model discrepancy or inadequacy, such as a lack of deep rooting in the Amazon in the model, to explain the anomalously low forest fraction in an ensemble of forests simulations. 
 
