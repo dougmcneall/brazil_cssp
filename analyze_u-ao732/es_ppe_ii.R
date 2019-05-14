@@ -1057,6 +1057,17 @@ X.kept = X.unif[ix.kept, ]
 # we've removed 80% of our prior input space
 (nrow(X.kept) / nsamp.unif) * 100
 
+# what remains of the inputs if we apply the global constraints? (No emulator)
+X.ix.kept = which(dat.globrunoff[,'cs_gb'] > 750 & dat.globrunoff[,'cs_gb'] < 3000 &
+                    dat.globrunoff[,'cv'] > 300 & dat.globrunoff[,'cv'] < 800 & 
+                    dat.globrunoff[,'npp_n_gb'] > 35 &
+                    dat.globrunoff[,'npp_n_gb'] < 80)
+
+dev.new(width = 8, height = 8)
+pairs(X[X.ix.kept, 21:32], gap = 0, xlim = c(0,1), ylim = c(0,1))
+
+
+
 
 pdf(file = 'graphics/ppe_ii/pairs_dens_all_constraints1.pdf', width = 10, height = 10)
 par(oma = c(0,0,0,3))
@@ -1145,10 +1156,11 @@ br = rev(rb)
 
 pdf(file = 'graphics/ppe_ii/pairs_dens_all_constraints2.pdf', width = 10, height = 10)
 par(oma = c(0,0,0,3))
-test = pairs(X.kept2,
+pairs(X.kept2,
              labels = 1:d,
              gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
              panel = dfunc.up,
+             dfunc.col = rb,
              cex.labels = 1,
              col.axis = 'white')
 
@@ -1164,14 +1176,59 @@ legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
 
 dev.off()
 
+# Generate ranges that contain 90% of the points
+X.kept2.90 = apply(X.kept2, 2, FUN = quantile, probs = c(0.05, 0.95))
+
 pdf("graphics/ppe_ii/constrained_inputs_hists.pdf", width = 9, height = 6)
 par(mfrow = c(4,8), mar = c(3,3,2,0.3), oma = c(0.5,0.5, 3, 0.5), fg = 'white')
 for(i in 1:d){
   hist(X.kept2[,i], xlim = c(0,1), col = 'darkgrey', axes = FALSE, main = colnames(lhs)[i])
   axis(1, col = 'black')
+  
+  rug(X.kept2.90[, i], lwd = 2, col = 'red')
   #axis(2)
 }
 dev.off()
+
+X.kept2.orig.range.90 = unnormalize(X.kept2.90, un.mins = round(apply(lhs,2,min),1), 
+                            un.maxes=round(apply(lhs,2,max),1))
+
+dev.new(height = 7, width = 4)
+plot(c(0,0,1,32), type = 'n', xlim = c(0,4), ylim = c(0,32))
+segments(round(apply(lhs,2,min),1), 1:d, round(apply(lhs,2,max),1), 1:d, col = 'grey',
+         lwd = 2)
+segments(X.kept2.orig.range.90[1,], 1:d,X.kept2.orig.range.90[2,], 1:d, col = 'black', 
+         lwd = 2)
+
+# in normalized coordinates.
+
+pdf(height = 6, width = 7, file = 'graphics/ppe_ii/constrained_range_2.pdf')
+par(mfrow = c(1,2), mar = c(5,6,2,2))
+
+plot(c(0,0,1,32), type = 'n', xlim = c(0,10), ylim = c(0,32), axes = FALSE, ylab = '',
+     xlab = 'Range')
+segments(round(apply(lhs,2,min),1), 1:d, round(apply(lhs,2,max),1), 1:d, col = 'tomato3',
+         lwd = 7, lend = 2)
+segments(X.kept2.orig.range.90[1,], 1:d,X.kept2.orig.range.90[2,], 1:d, col = 'skyblue3', 
+         lwd = 7, lend = 2)
+axis(1)
+axis(2, labels = colnames(lhs), at = 1:32, las = 1, cex.axis = 0.7, fg = 'white')
+
+plot(c(0,0,1,32), type = 'n', xlim = c(0,1), ylim = c(0,32), xaxs = 'i', axes = FALSE,
+     labels = colnames(lhs), xlab = 'Normalized range', ylab = '')
+segments(0, 1:d, 1, 1:d, col = 'tomato3',
+         lwd = 7, lend = 2)
+segments(X.kept2.90[1,], 1:d, X.kept2.90[2,], 1:d, col = 'skyblue3', 
+         lwd = 7, lend = 2)
+
+axis(1)
+axis(2, labels = colnames(lhs), at = 1:32, las = 1, cex.axis = 0.7, fg = 'white')
+
+dev.off()
+
+
+#for 
+
 
 
 # Emulate Amazon runoff at X.unif
