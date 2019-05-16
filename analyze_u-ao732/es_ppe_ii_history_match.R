@@ -26,6 +26,11 @@ X = normalize(lhs)
 colnames(X) = colnames(lhs)
 d = ncol(X)
 
+# Express the "standard" runs (factor = 1) in terms of the
+# latin hypercube design
+X.stan = matrix(rep(1,32), nrow =1)
+X.stan.norm = normalize(X.stan, wrt = lhs)
+
 # --------------------------------------------------------------------------------
 # Apply constraints to the input space by history matching with global data
 #
@@ -67,8 +72,6 @@ for(i in 1:length(fnlocvec)){
   datmat[ , i] = mean.modern
 }
 colnames(datmat) = fnams
-
-
 dat.norm = sweep(datmat, 2, norm.vec, FUN = '/')
 
 dev.new(width = 9, height = 10)
@@ -100,20 +103,36 @@ for(i in 1:6){
 dev.new(width = 10, height = 7)
 par(mfrow = c(4, 8), mar = c(1,1,1,1))
 for(i in 1:d){
-  plot(lhs[1:300,i],dat.norm[1:300,1], axes = FALSE, xlab = '', ylab = '')
+  plot(lhs[level0.ix,i], dat.norm[level0.ix,2], axes = FALSE, xlab = '', ylab = '')
 }
 
+# Just looking at which inputs in the ensemble remain after constraint will tell us about
+# which inputs are compatible with the constraints. 
+ix.X.level1 = which(dat.norm[,'cs_gb'] > 750 & dat.norm[,'cs_gb'] < 3000 &
+                  dat.norm[,'cv'] > 300 & dat.norm[,'cv'] < 800 & 
+                  dat.norm[,'npp_n_gb'] > 35 &
+                  dat.norm[,'npp_n_gb'] < 80)
 
-nsamp.unif = 100000
-X.unif = samp.unif(nsamp.unif, mins = mins, maxes = maxes)
+X.level1 = X[ix.X.level1, ]
 
-y.unif = matrix(nrow = nsamp.unif, ncol = ncol(dat.globrunoff))
-colnames(y.unif) = colnames(dat.globrunoff)
+dev.new(width = 10, height = 10)
+pairs(X.level1, gap = 0, xlim = c(0,1), ylim = c(0,1), lower.panel = NULL,
+      pch = '.')
+
+
+# Build emulators and do the constraint more thouroughly.
+nsamp.unif = 99999
+# The last row is the "standard" set of parameters
+X.unif = rbind( samp.unif(nsamp.unif, mins = mins, maxes = maxes), X.stan.norm)
+
+y.unif = matrix(nrow = nrow(X.unif), ncol = ncol(dat.level0))
+colnames(y.unif) = colnames(dat.level0)
 
 global.emlist = vector('list',length(fnams))
 
+
 for(i in 1:ncol(y.unif)){
-  em = twoStep.glmnet(X = X.globrunoff, y = dat.globrunoff[,i])
+  em = twoStep.glmnet(X = X.level0, y = dat.level0[,i])
   global.emlist[[i]] = em
   pred = predict(em$emulator, newdata = X.unif, type = 'UK')
   y.unif[,i] = pred$mean
@@ -127,6 +146,95 @@ X.kept = X.unif[ix.kept, ]
 
 # we've removed 80% of our prior input space
 (nrow(X.kept) / nsamp.unif) * 100
+
+# for comparison, what does the emulator think the the "standard"
+# parameters would produce?
+
+dev.new(width = 9, height = 10)
+par(mfrow = c(3,2))
+for(i in 1:6){
+  hist(dat.norm[level0.ix,i], main = fnams[i])
+  rug(tail(y.unif,1)[, i], col = 'red', lwd = 2)
+}
+
+# Histograms of the constraint outputs
+#note: always pass alpha on the 0-255 scale
+makeTransparent<-function(someColor, alpha=100)
+{
+  newColor<-col2rgb(someColor)
+  apply(newColor, 2, function(curcoldata){rgb(red=curcoldata[1], green=curcoldata[2],
+                                              blue=curcoldata[3],alpha=alpha, maxColorValue=255)})
+}
+
+hcol = 'grey'
+lcol = 'black'
+#pdf(file = 'graphics/ppe_ii/constraint_hists_standard.pdf', width = 8, height = 8)
+dev.new()
+par(mfrow = c(3,2), fg = 'white', las = 1)
+
+hist(dat.norm[level0.ix,'runoff'], col = hcol, main = 'Runoff', xlab = 'Sv')
+polygon(x = c(0.5, 100, 100, 0.5), y = c(0, 0, 1000, 1000), 
+        col = makeTransparent('tomato2', alpha = 80))
+rug(tail(y.unif,1)[,'runoff'], col = 'red', lwd = 3)
+
+hist(dat.norm[level0.ix,'nbp'], col = hcol, main = 'NBP', xlab = 'GtC/year')
+polygon(x = c(-10, 100, 100, -10), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2', alpha = 80))
+rug(tail(y.unif,1)[,'nbp'], col = 'red', lwd = 3)
+
+hist(dat.norm[level0.ix,'cs_gb'], col = hcol, main = 'Soil Carbon', xlab = 'GtC')
+
+polygon(x = c(750, 3000, 3000, 750), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2', alpha = 80))
+# AR5 numbers
+polygon(x = c(1500, 2400, 2400, 1500), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('skyblue2', alpha = 80))
+
+rug(tail(y.unif,1)[,'cs_gb'], col = 'red', lwd = 3)
+
+hist(dat.norm[level0.ix,'cv'], col = hcol, main = 'Vegetation Carbon', xlab = 'GtC')
+polygon(x = c(300, 800, 800, 300), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2', alpha = 80))
+
+polygon(x = c(450, 650, 650, 450), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('skyblue2', alpha = 80))
+
+rug(tail(y.unif,1)[,'cv'], col = 'red', lwd = 3)
+
+hist(dat.norm[level0.ix,'npp_n_gb'], col = hcol , main = 'NPP', xlab = 'GtC/year')
+polygon(x = c(35, 80, 80, 35), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2', alpha = 80))
+rug(tail(y.unif,1)[,'npp_n_gb'], col = 'red', lwd = 3)
+
+
+#hist(bl_frac_modern, col = hcol, main = 'Amazon Forest Fraction', xlab = 'fraction')
+#polygon(x = c(0.5, 1, 1, 0.5), y = c(0, 0, 1000, 1000), col = makeTransparent('tomato2'))
+#dev.off()
+
+
+
+# Le Quere (2018) say that Ciais (2013) say that carbon stocks are:
+# soil 1500-2400 GtC
+# Veg 450-650 GtC
+# Although it isn't clear what level of uncertainty that represents.
+# what would that do to our input space?
+
+ix.kept.AR5 = which(y.unif[,'cs_gb'] > 1500 & y.unif[,'cs_gb'] < 2400 &
+                  y.unif[,'cv'] > 450 & y.unif[,'cv'] < 650 & 
+                  y.unif[,'npp_n_gb'] > 35 &
+                  y.unif[,'npp_n_gb'] < 80)
+X.kept.AR5 = X.unif[ix.kept.AR5, ]
+
+# we've removed 98.7% of our prior input space, including our standard set of parameters
+# - chiefly by requiring a higher soil carbon that JULES is willing to simulate.
+(nrow(X.kept.AR5) / nsamp.unif) * 100
+
+
+# For NPP, Cramer et al (1999) found 44.4 - 66.3 PgC a year in models
+# https://www.pik-potsdam.de/members/cramer/publications/edited-books/potsdam95/Cramer_1999b_GCB.pdf
+
+# mean 53 range 40.5 - 78 in literature from Melillo (1993)
+# http://www.as.wvu.edu/biology/bio463/Melillo%20et%20al%201993TEM%20NPP%20Estimations.pdf
 
 
 
