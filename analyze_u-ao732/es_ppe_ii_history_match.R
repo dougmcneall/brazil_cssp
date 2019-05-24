@@ -211,8 +211,6 @@ rug(tail(y.unif,1)[,'npp_n_gb'], col = 'red', lwd = 3)
 #polygon(x = c(0.5, 1, 1, 0.5), y = c(0, 0, 1000, 1000), col = makeTransparent('tomato2'))
 #dev.off()
 
-
-
 # Le Quere (2018) say that Ciais (2013) say that carbon stocks are:
 # soil 1500-2400 GtC
 # Veg 450-650 GtC
@@ -228,6 +226,81 @@ X.kept.AR5 = X.unif[ix.kept.AR5, ]
 # we've removed 98.7% of our prior input space, including our standard set of parameters
 # - chiefly by requiring a higher soil carbon that JULES is willing to simulate.
 (nrow(X.kept.AR5) / nsamp.unif) * 100
+
+
+# It's pretty clear that a problem with soil carbon is going to drive the 
+# acceptance or rejection of input space, to a large degree. In that case, we have
+# two options: 1) Accept the new space, (and also reject the standard parameters), 
+# 2) Add a model discrepancy term and related uncertainty.
+
+
+# First, it woudl be useful to have a simple sensitivity analysis for soil carbon.
+X.oaat = oaat.design(X.level0, n=21, med = TRUE)
+colnames(X.oaat) = colnames(X.level0)
+
+twoStep.em = twoStep.glmnet(X=X.level0, y=dat.level0[,'cs_gb'])
+oaat.pred = predict(twoStep.em$emulator, newdata = X.oaat, type = 'UK')
+
+n = 21
+dev.new(width = 8, height = 6)
+par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
+
+y.oaat = oaat.pred$mean
+y.upper = oaat.pred$mean+(2*oaat.pred$sd)
+y.lower = oaat.pred$mean-(2*oaat.pred$sd)
+ylim = range(y.oaat)
+
+for(i in 1:d){
+  
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  
+  plot(X.oaat[ix,i], y.oaat[ix], type = 'l',
+       ylab= '',ylim = ylim, axes = FALSE,
+       main = '',
+       xlab = '')
+  lines(X.oaat[ix,i], y.upper[ix], col = 'grey')
+  lines(X.oaat[ix,i],y.lower[ix], col = 'grey')
+  
+  axis(1, col = 'grey', col.axis = 'grey', las = 1)
+  axis(2, col = 'grey', col.axis = 'grey', las = 1)
+  mtext(3, text = colnames(lhs)[i], line = 0.2, cex = 0.7)  
+  
+}
+
+soil.sens = sensvar(oaat.pred = oaat.pred, n=21, d=ncol(X.oaat))
+soil.sens.sort = sort(soil.sens, decreasing = TRUE, index.return = TRUE)
+
+#pdf(file = 'graphics/ppe_ii/soil_sens_level0.pdf', width = 7, height = 5)
+dev.new(width = 7, height = 5)
+par(mar = c(8,4,3,1))
+plot(1:d, soil.sens.sort$x, axes = FALSE, pch = 19,
+     xlab = '', ylab = 'OAAT Sensitivity Index')
+segments(x0 = 1:d, y0 = rep(0,d), x1 = 1:d, y1 = soil.sens.sort$x)
+axis(1, at = 1:d,  labels = colnames(X)[soil.sens.sort$ix], las = 3, cex.axis = 0.8)
+axis(2,las =1)
+#dev.off()
+
+# We find that the soil carbon is most sensitive to kaps_roth
+# Type:	real(4)
+# Default:	3.22e-7, 9.65e-9, 2.12e-8, 6.43e-10
+# Specific soil respiration rate for the RothC submodel for each soil carbon pool.
+# Only used if using the TRIFFID vegetation model (l_triffid = TRUE),
+# in which case soil carbon is modelled using four pools
+# (biomass, humus, decomposable plant material, resistant plant material).
+#
+# we half-and-double kaps_roth in the ensemble.
+#
+# Soil carbon is second-most-sensitive to n_inorg_turnover
+# Type:	real
+# Default:	1.0
+
+# Parameter controlling the lifetime of the inorganic N pool.
+# A value of 1 implies the whole pool will turnover in 360 days.
+
+# third most sensitive is alpha_io
+# Type:	real(npft)
+# Default:	None
+#Quantum efficiency (mol CO2 per mol PAR photons).
 
 
 # For NPP, Cramer et al (1999) found 44.4 - 66.3 PgC a year in models
