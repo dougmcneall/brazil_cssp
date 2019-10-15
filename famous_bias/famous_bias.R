@@ -17,9 +17,14 @@ library(viridisLite)
 load('famous_forest_fraction.RData')
 load('famous_agg.RData')
 
-source('https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtools.R')
-source('https://raw.githubusercontent.com/dougmcneall/packages-git/master/imptools.R')
-source('https://raw.githubusercontent.com/dougmcneall/packages-git/master/vistools.R')
+# Load specific versions of a github repository
+source('https://raw.githubusercontent.com/dougmcneall/packages-git/5f79ffe749f25c6fc39f4f7925e1538d36b7caf1/emtools.R')
+source('https://raw.githubusercontent.com/dougmcneall/packages-git/5f79ffe749f25c6fc39f4f7925e1538d36b7caf1/imptools.R')
+source('https://raw.githubusercontent.com/dougmcneall/packages-git/5f79ffe749f25c6fc39f4f7925e1538d36b7caf1/vistools.R')
+
+#source('https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtools.R')
+#source('https://raw.githubusercontent.com/dougmcneall/packages-git/master/imptools.R')
+#source('https://raw.githubusercontent.com/dougmcneall/packages-git/master/vistools.R')
 
 # pallettes
 rb <- brewer.pal(11, "RdBu")
@@ -40,7 +45,6 @@ yor <- brewer.pal(9, "YlOrRd")
 acc <- brewer.pal(8,'Paired')
 cbPal <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
-
 col.amaz <- cbPal[1]
 col.seasia <- cbPal[2]
 col.congo <- cbPal[3]
@@ -48,14 +52,6 @@ col.global <- cbPal[4]
 col.namerica <- cbPal[5]
 
 col.tropics = c(rep(col.amaz, 100), rep(col.seasia,100), rep(col.congo,100))
-
-
-#col.amaz <- acc[1]
-#col.namerica <- acc[2]
-#col.seasia <- acc[3]
-#col.congo <- acc[4]
-#col.global <- acc[5]
-
 
 pch.global <- 3
 pch.amaz <- 1
@@ -135,13 +131,11 @@ X_AMAZON = famous_agg[ ,c(2,3,4,5,6,7,8,15,19)] # AMAZON
 X_SEASIA = famous_agg[, c(2,3,4,5,6,7,8, 17,21)] # SEASIA
 X_CONGO = famous_agg[, c(2,3,4,5,6,7,8,16,20)] # CONGO
 
-
 colnames(X_AMAZON) = c(colnames(famous_agg)[2:8], 'MOD_TEMP', 'MOD_PRECIP')
 colnames(X_SEASIA) = c(colnames(famous_agg)[2:8], 'MOD_TEMP', 'MOD_PRECIP')
 colnames(X_CONGO) = c(colnames(famous_agg)[2:8], 'MOD_TEMP', 'MOD_PRECIP')
 
 X_tropics = rbind(X_AMAZON, X_SEASIA, X_CONGO)
-
 X_tropics_norm = normalize(X_tropics)
 
 Y_tropics = c(famous_agg$AMAZ_MOD_FRAC, famous_agg$SEASIA_MOD_FRAC, famous_agg$CONGO_MOD_FRAC)
@@ -190,11 +184,10 @@ mean(abs(true.loo.congo$mean - famous_agg$CONGO_MOD_FRAC))
 
 # Mean error when not using T/P emulator
 regular.mae = mean(abs(c(true.loo.amazon$mean, true.loo.seasia$mean, true.loo.congo$mean) - Y_tropics))
-regular.mae
+print(paste('MAE for regular emulator =', regular.mae))
 
 aug.mae = mean(abs(true.loo.all$mean - Y_tropics))
-
-aug.mae / regular.mae
+print(paste('MAE for augmented emulator =', aug.mae))
 
 # Mean absolute error is about 0.03 or 3%
 print(paste('With T/P mean absolute cross validation error = ', mean(abs(true.loo.all$mean - Y_tropics))))
@@ -840,7 +833,6 @@ pdf(width = 7, height = 7, file = 'graphics/best_inputs_amazon.pdf')
 pairs(rbind(X.unif[nroy.ix.amaz, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
 
-
 pred.unif.amaz.bc = predict(fit.tropics, newdata = X.unif.amaz, type = 'UK')
 amaz.impl.bc = impl(em = pred.unif.amaz.bc$mean, em.sd = pred.unif.amaz.bc$sd,
                  disc = disc, obs = obs_amazon,
@@ -851,7 +843,6 @@ nroy.ix.amaz.bc = which(amaz.impl.bc < thres)
 pdf(width = 7, height = 7, file = 'graphics/best_inputs_amazon_bc.pdf')
 pairs(rbind(X.unif[nroy.ix.amaz.bc, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
-
 
 # Now SE Asia
 pred.unif.seasia = predict(fit.seasia, newdata = X.unif, type = 'UK')
@@ -915,7 +906,6 @@ congo.impl.default = impl(em = standard.congo$mean, em.sd = standard.congo$sd,
                            disc.sd = disc.sd,
                            obs.sd = obs.sd)
 
-
 # Bias corrected Implausibility
 amaz.impl.bc.default = impl(em = pred.amaz.bc$mean, em.sd = pred.amaz.bc$sd,
                       disc = disc, obs = obs_amazon,
@@ -932,10 +922,11 @@ congo.impl.bc.default = impl(em = pred.congo.bc$mean, em.sd = pred.congo.bc$sd,
                               disc.sd = disc.sd,
                               obs.sd = obs.sd)
 
+# ----------------------------------------------------------------
+# What part of parameter space matches everything?
+# (We use a very low uncertainty)
+# ----------------------------------------------------------------
 
-
-# what part of parameter space matches everything?
-# Very low uncertainty here.
 
 nroy.bc.ix = intersect(intersect(nroy.ix.amaz.bc,nroy.ix.seasia.bc ), nroy.ix.congo.bc)
 nroy.nobc.ix = intersect(intersect(nroy.ix.amaz,nroy.ix.seasia ), nroy.ix.congo)
@@ -951,10 +942,11 @@ pdf(width = 7, height = 7, file = 'graphics/best_inputs_all_nobc.pdf')
 pairs(rbind(X.unif[nroy.nobc.ix, ], X.stan.norm), panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
 
-test = rbind(X.unif[nroy.bc.ix, ], X.stan.norm)
+# NROY inputs in the bias corrected case 
+X.nroy.bc = rbind(X.unif[nroy.bc.ix, ], X.stan.norm)
 
 pdf(width = 7, height = 7, file = 'graphics/best_inputs_all_bc_default.pdf')
-pairs(test, panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
+pairs(X.nroy.bc, panel = dfunc.up.truth, gap = 0, upper.panel = NULL)
 dev.off()
 
 # Proportion of NROY space that is "shared"
@@ -1132,11 +1124,8 @@ points(tp.congo.norm, col = 'red', pch = 19)
 dev.off()
 
 
-
-
-
 # --------------------------------------------------------------
-# Here's a fun thing - suggested by Michael Goldstein - 
+# Analysis suggested by Michael Goldstein - 
 # What value does the model add over just using T and P to
 # fit the data?
 # -------------------------------------------------------------
@@ -1223,11 +1212,7 @@ legend('top', legend = c('Amazon', 'Asia', 'Africa'),
 dev.off()
 
 
-
-
-
-
-# fit using just temperature andprecip
+# fit using just temperature and precip
 fit.tp  = km(~., design = X_tropics_norm[, 8:9], response=Y_tropics)
 pred.tp = leaveOneOut.km(fit.tp, type="UK", trend.reestim=TRUE)
 
@@ -1243,40 +1228,9 @@ plot(fit.resid.congo)
 
 }else{print('skipping diagnostics')}
 
-# ------------------------------------------------------------------
-# What are the impacts of forest fraction on temperature and precip?
-# ------------------------------------------------------------------
-
-# Flip the 'augmented emulator' concept around. If temperature and precip can
-# be added to the input parameters to predict forest fraction, then surely the inverse is
-# true? Use input parameters and forest fraction to predict changes in temperature and precip
-
-# Doesn't work!
-
-# X.ff.amazon = cbind(X,famous_agg$AMAZ_MOD_FRAC)
-# colnames(X.ff.amazon) = c(colnames(X), 'MOD_FRAC')
-# X.ff.seasia = cbind(X,famous_agg$SEASIA_MOD_FRAC)
-# colnames(X.ff.seasia) = c(colnames(X), 'MOD_FRAC')
-# X.ff.congo = cbind(X,famous_agg$CONGO_MOD_FRAC)
-# colnames(X.ff.congo) = c(colnames(X), 'MOD_FRAC')
-# 
-# X.ff.tropics = rbind(X.ff.amazon, X.ff.seasia, X.ff.congo)
-# 
-# X.ff.tropics.norm = normalize(X.ff.tropics)
-# 
-# precip.tropics = c(famous_agg$AMAZ_MOD_PRECIP, famous_agg$SEASIA_MOD_PRECIP, famous_agg$CONGO_MOD_PRECIP)
-# temp.tropics = c(famous_agg$AMAZ_MOD_TEMP, famous_agg$SEASIA_MOD_TEMP,famous_agg$CONGO_MOD_TEMP )
-#   
-# 
-# tropics.temp.ff.fit = km(~., design = X.ff.tropics.norm, response=temp.tropics)
-# tropics.precip.ff.fit = km(~., design = X.ff.tropics.norm, response=precip.tropics)
-
-
-
 # ---------------------------------------------------------------------------
 # Plot maps of the tropical forests.
 # ---------------------------------------------------------------------------
-
 remap.famous = function(dat,longs,lats, shift = FALSE){
   # reshape a map in vector form so that fields() package function image.plot() 
   #  (for example) will plot it correctly
@@ -1330,8 +1284,6 @@ bl.obs.map = blockswap(t(as.matrix(bl.obs.dat)), longs = obslongs, lats = obslat
 
 bl.dat.regrid = read.table('forest_fraction_obs_map_regrid_v2.txt', na.strings = '-1.073741824000000000e+09')
 bl.obs.map.regrid = blockswap(t(as.matrix(bl.dat.regrid)), longs = longs, lats = lats, shift = 180)
-
-
 
 pdf(width = 5, height = 8, file = 'graphics/map_comparison.pdf' )
 par(bg = 'lightgrey', mfrow = c(2,1), oma = c(4,0,0,0), mar = c(4,1,3,1))

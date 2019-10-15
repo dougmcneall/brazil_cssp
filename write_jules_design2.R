@@ -75,8 +75,8 @@ write_jules_design2 = function(paramlist, n, fac, minfac, maxfac, tf, fnprefix =
   # Do the pfts and then the factors and then the logical
   lhs = unnormalize(
     maximinLHS(n = n, k = k, dup = 1),
-    un.mins = c(parampft_mins , minfac, rep(0, length(tf))),
-    un.maxes = c(parampft_maxes, maxfac, rep(1, length(tf)))
+    un.mins = c(parampft_mins , minfac, rep(0, length(tf)), recursive = TRUE),
+    un.maxes = c(parampft_maxes, maxfac, rep(1, length(tf)), recursive = TRUE)
   )
   colnames(lhs) = all_names
   

@@ -33,6 +33,11 @@ X.raw = normalize(lhs)
 colnames(X.raw) = colnames(lhs)
 d = ncol(X.raw)
 
+# Express the "standard" runs (factor = 1) in terms of the
+# latin hypercube design
+X.stan = matrix(rep(1,32), nrow =1)
+X.stan.norm = normalize(X.stan, wrt = lhs)
+
 # --------------------------------------------------------------------------------
 # Apply constraints to the input space by history matching with global data
 #
@@ -73,6 +78,7 @@ for(i in 1:length(fnlocvec)){
   mean.modern = apply(dat.modern, 1, mean)
   datmat.raw[ , i] = mean.modern
 }
+<<<<<<< HEAD
 colnames(datmat.raw) = fnams
 
 #remove.ix = c(1, which(duplicated(datmat.raw[,1])))
@@ -91,6 +97,10 @@ p = ncol(dat.norm)
 # the initial rows
 
 
+=======
+colnames(datmat) = fnams
+dat.norm = sweep(datmat, 2, norm.vec, FUN = '/')
+>>>>>>> 6652f158f40d90f925a47092f6bb521ff6b92c07
 
 dev.new(width = 9, height = 10)
 par(mfrow = c(3,2))
@@ -132,9 +142,10 @@ for(i in 1:6){
 dev.new(width = 10, height = 7)
 par(mfrow = c(4, 8), mar = c(1,1,1,1))
 for(i in 1:d){
-  plot(lhs[1:300,i],dat.norm[1:300,1], axes = FALSE, xlab = '', ylab = '')
+  plot(lhs[level0.ix,i], dat.norm[level0.ix,2], axes = FALSE, xlab = '', ylab = '')
 }
 
+<<<<<<< HEAD
 # Parallel Coordinates plot of NROY and ruled out members, level 0
 dev.new(width = 20, height = 9)
 par(mfrow = c(2,1), las = 2, mar = c(7,4,4,1), cex.axis = 0.8)
@@ -542,14 +553,37 @@ abline(0,1)
 
 
 
+=======
+# Just looking at which inputs in the ensemble remain after constraint will tell us about
+# which inputs are compatible with the constraints. 
+ix.X.level1 = which(dat.norm[,'cs_gb'] > 750 & dat.norm[,'cs_gb'] < 3000 &
+                  dat.norm[,'cv'] > 300 & dat.norm[,'cv'] < 800 & 
+                  dat.norm[,'npp_n_gb'] > 35 &
+                  dat.norm[,'npp_n_gb'] < 80)
 
-nsamp.unif = 100000
-X.unif = samp.unif(nsamp.unif, mins = mins, maxes = maxes)
+X.level1 = X[ix.X.level1, ]
+>>>>>>> 6652f158f40d90f925a47092f6bb521ff6b92c07
 
+dev.new(width = 10, height = 10)
+pairs(X.level1, gap = 0, xlim = c(0,1), ylim = c(0,1), lower.panel = NULL,
+      pch = '.')
+
+<<<<<<< HEAD
 y.unif = matrix(nrow = nsamp.unif, ncol = ncol(dat.level0))
 colnames(y.unif) = colnames(dat.norm)
+=======
+
+# Build emulators and do the constraint more thouroughly.
+nsamp.unif = 99999
+# The last row is the "standard" set of parameters
+X.unif = rbind( samp.unif(nsamp.unif, mins = mins, maxes = maxes), X.stan.norm)
+
+y.unif = matrix(nrow = nrow(X.unif), ncol = ncol(dat.level0))
+colnames(y.unif) = colnames(dat.level0)
+>>>>>>> 6652f158f40d90f925a47092f6bb521ff6b92c07
 
 global.emlist = vector('list',length(fnams))
+
 
 for(i in 1:ncol(y.unif)){
   em = twoStep.glmnet(X = X.level0, y = dat.level0[,i])
@@ -568,6 +602,168 @@ X.kept = X.unif[ix.kept, ]
 
 # we've removed 80% of our prior input space
 (nrow(X.kept) / nsamp.unif) * 100
+
+# for comparison, what does the emulator think the the "standard"
+# parameters would produce?
+
+dev.new(width = 9, height = 10)
+par(mfrow = c(3,2))
+for(i in 1:6){
+  hist(dat.norm[level0.ix,i], main = fnams[i])
+  rug(tail(y.unif,1)[, i], col = 'red', lwd = 2)
+}
+
+# Histograms of the constraint outputs
+#note: always pass alpha on the 0-255 scale
+makeTransparent<-function(someColor, alpha=100)
+{
+  newColor<-col2rgb(someColor)
+  apply(newColor, 2, function(curcoldata){rgb(red=curcoldata[1], green=curcoldata[2],
+                                              blue=curcoldata[3],alpha=alpha, maxColorValue=255)})
+}
+
+hcol = 'grey'
+lcol = 'black'
+#pdf(file = 'graphics/ppe_ii/constraint_hists_standard.pdf', width = 8, height = 8)
+dev.new()
+par(mfrow = c(3,2), fg = 'white', las = 1)
+
+hist(dat.norm[level0.ix,'runoff'], col = hcol, main = 'Runoff', xlab = 'Sv')
+polygon(x = c(0.5, 100, 100, 0.5), y = c(0, 0, 1000, 1000), 
+        col = makeTransparent('tomato2', alpha = 80))
+rug(tail(y.unif,1)[,'runoff'], col = 'red', lwd = 3)
+
+hist(dat.norm[level0.ix,'nbp'], col = hcol, main = 'NBP', xlab = 'GtC/year')
+polygon(x = c(-10, 100, 100, -10), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2', alpha = 80))
+rug(tail(y.unif,1)[,'nbp'], col = 'red', lwd = 3)
+
+hist(dat.norm[level0.ix,'cs_gb'], col = hcol, main = 'Soil Carbon', xlab = 'GtC')
+
+polygon(x = c(750, 3000, 3000, 750), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2', alpha = 80))
+# AR5 numbers
+polygon(x = c(1500, 2400, 2400, 1500), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('skyblue2', alpha = 80))
+
+rug(tail(y.unif,1)[,'cs_gb'], col = 'red', lwd = 3)
+
+hist(dat.norm[level0.ix,'cv'], col = hcol, main = 'Vegetation Carbon', xlab = 'GtC')
+polygon(x = c(300, 800, 800, 300), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2', alpha = 80))
+
+polygon(x = c(450, 650, 650, 450), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('skyblue2', alpha = 80))
+
+rug(tail(y.unif,1)[,'cv'], col = 'red', lwd = 3)
+
+hist(dat.norm[level0.ix,'npp_n_gb'], col = hcol , main = 'NPP', xlab = 'GtC/year')
+polygon(x = c(35, 80, 80, 35), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2', alpha = 80))
+rug(tail(y.unif,1)[,'npp_n_gb'], col = 'red', lwd = 3)
+
+
+#hist(bl_frac_modern, col = hcol, main = 'Amazon Forest Fraction', xlab = 'fraction')
+#polygon(x = c(0.5, 1, 1, 0.5), y = c(0, 0, 1000, 1000), col = makeTransparent('tomato2'))
+#dev.off()
+
+# Le Quere (2018) say that Ciais (2013) say that carbon stocks are:
+# soil 1500-2400 GtC
+# Veg 450-650 GtC
+# Although it isn't clear what level of uncertainty that represents.
+# what would that do to our input space?
+
+ix.kept.AR5 = which(y.unif[,'cs_gb'] > 1500 & y.unif[,'cs_gb'] < 2400 &
+                  y.unif[,'cv'] > 450 & y.unif[,'cv'] < 650 & 
+                  y.unif[,'npp_n_gb'] > 35 &
+                  y.unif[,'npp_n_gb'] < 80)
+X.kept.AR5 = X.unif[ix.kept.AR5, ]
+
+# we've removed 98.7% of our prior input space, including our standard set of parameters
+# - chiefly by requiring a higher soil carbon that JULES is willing to simulate.
+(nrow(X.kept.AR5) / nsamp.unif) * 100
+
+
+# It's pretty clear that a problem with soil carbon is going to drive the 
+# acceptance or rejection of input space, to a large degree. In that case, we have
+# two options: 1) Accept the new space, (and also reject the standard parameters), 
+# 2) Add a model discrepancy term and related uncertainty.
+
+
+# First, it woudl be useful to have a simple sensitivity analysis for soil carbon.
+X.oaat = oaat.design(X.level0, n=21, med = TRUE)
+colnames(X.oaat) = colnames(X.level0)
+
+twoStep.em = twoStep.glmnet(X=X.level0, y=dat.level0[,'cs_gb'])
+oaat.pred = predict(twoStep.em$emulator, newdata = X.oaat, type = 'UK')
+
+n = 21
+dev.new(width = 8, height = 6)
+par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
+
+y.oaat = oaat.pred$mean
+y.upper = oaat.pred$mean+(2*oaat.pred$sd)
+y.lower = oaat.pred$mean-(2*oaat.pred$sd)
+ylim = range(y.oaat)
+
+for(i in 1:d){
+  
+  ix = seq(from = ((i*n) - (n-1)), to =  (i*n), by = 1)
+  
+  plot(X.oaat[ix,i], y.oaat[ix], type = 'l',
+       ylab= '',ylim = ylim, axes = FALSE,
+       main = '',
+       xlab = '')
+  lines(X.oaat[ix,i], y.upper[ix], col = 'grey')
+  lines(X.oaat[ix,i],y.lower[ix], col = 'grey')
+  
+  axis(1, col = 'grey', col.axis = 'grey', las = 1)
+  axis(2, col = 'grey', col.axis = 'grey', las = 1)
+  mtext(3, text = colnames(lhs)[i], line = 0.2, cex = 0.7)  
+  
+}
+
+soil.sens = sensvar(oaat.pred = oaat.pred, n=21, d=ncol(X.oaat))
+soil.sens.sort = sort(soil.sens, decreasing = TRUE, index.return = TRUE)
+
+#pdf(file = 'graphics/ppe_ii/soil_sens_level0.pdf', width = 7, height = 5)
+dev.new(width = 7, height = 5)
+par(mar = c(8,4,3,1))
+plot(1:d, soil.sens.sort$x, axes = FALSE, pch = 19,
+     xlab = '', ylab = 'OAAT Sensitivity Index')
+segments(x0 = 1:d, y0 = rep(0,d), x1 = 1:d, y1 = soil.sens.sort$x)
+axis(1, at = 1:d,  labels = colnames(X)[soil.sens.sort$ix], las = 3, cex.axis = 0.8)
+axis(2,las =1)
+#dev.off()
+
+# We find that the soil carbon is most sensitive to kaps_roth
+# Type:	real(4)
+# Default:	3.22e-7, 9.65e-9, 2.12e-8, 6.43e-10
+# Specific soil respiration rate for the RothC submodel for each soil carbon pool.
+# Only used if using the TRIFFID vegetation model (l_triffid = TRUE),
+# in which case soil carbon is modelled using four pools
+# (biomass, humus, decomposable plant material, resistant plant material).
+#
+# we half-and-double kaps_roth in the ensemble.
+#
+# Soil carbon is second-most-sensitive to n_inorg_turnover
+# Type:	real
+# Default:	1.0
+
+# Parameter controlling the lifetime of the inorganic N pool.
+# A value of 1 implies the whole pool will turnover in 360 days.
+
+# third most sensitive is alpha_io
+# Type:	real(npft)
+# Default:	None
+#Quantum efficiency (mol CO2 per mol PAR photons).
+
+
+# For NPP, Cramer et al (1999) found 44.4 - 66.3 PgC a year in models
+# https://www.pik-potsdam.de/members/cramer/publications/edited-books/potsdam95/Cramer_1999b_GCB.pdf
+
+# mean 53 range 40.5 - 78 in literature from Melillo (1993)
+# http://www.as.wvu.edu/biology/bio463/Melillo%20et%20al%201993TEM%20NPP%20Estimations.pdf
 
 
 ix.rejected = setdiff(1:nsamp.unif, ix.kept)

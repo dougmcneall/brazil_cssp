@@ -20,10 +20,11 @@ minfac = lapply(paramlist.trunc,function(x) x$min[which.max(x$max)] / x$standard
 write_jules_design2(paramlist, n = 300,
                     fac = fac, minfac = minfac, maxfac = maxfac,
                     tf = tf,
-                    fnprefix = 'conf_dummy/param-perturb-P',
-                    lhsfn = 'conf_dummy/lhs.txt',
-                    stanfn = 'conf_dummy/stanparms.txt',
-                    allstanfn = 'conf_dummy/allstanparms.txt')
+                    fnprefix = 'conf_files_u-ao732/param-perturb-P',
+                    lhsfn = 'conf_files_u-ao732/lhs_u-ao732.txt',
+                    stanfn = 'conf_files_u-ao732/stanparms_u-ao732.txt',
+                    allstanfn = 'conf_files_u-ao732/allstanparms_u-ao732.txt',
+                    rn = 12)
 
 print(cbind(minfac, maxfac))
 
@@ -31,9 +32,6 @@ print(cbind(minfac, maxfac))
 # Checking section
 lapply(paramlist, function(x) length(x$standard))
 lapply(paramlist, function(x) length(x$standard)==length(x$min) & length(x$standard)==length(x$max))
-
-
-
 
 
 

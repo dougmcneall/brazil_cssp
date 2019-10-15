@@ -2,7 +2,7 @@
 # A set of functions for analysing data from a 'per-pft' ensemble of JULES
 
 library(devtools)
-#install_github(repo = "dougmcneall/hde")
+#install_github(repo = "dougmcneall/hde", local = TRUE, lib = "~/R/x86_64-pc-linux-gnu-library/3.6")
 
 library(hde)
 library(RColorBrewer)
@@ -11,13 +11,13 @@ library(MASS)
 library(DiceKriging)
 library(ncdf4)
 
-source("/Users/dougmcneall/Documents/work/R/packages-git/emtools.R")
-source("/Users/dougmcneall/Documents/work/R/packages-git/imptools.R")
-source("/Users/dougmcneall/Documents/work/R/packages-git/vistools.R")
+#source("/Users/dougmcneall/Documents/work/R/packages-git/emtools.R")
+#source("/Users/dougmcneall/Documents/work/R/packages-git/imptools.R")
+#source("/Users/dougmcneall/Documents/work/R/packages-git/vistools.R")
 
-#source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtools.R")
-#source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/imptools.R")
-#source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/vistools.R")
+source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtools.R")
+source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/imptools.R")
+source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/vistools.R")
 
 yg = brewer.pal(9, "YlGn")
 ryb = brewer.pal(11, "RdYlBu")
