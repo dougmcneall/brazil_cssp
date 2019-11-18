@@ -867,6 +867,7 @@ axis(1,labels = colnames(lhs), at = 1:d, las=3, cex.axis = 0.8 )
 axis(2, las = 1) 
 #dev.off()
 
+
 abssum.sensmat.level0.sort = sort(abssum.sensmat.level0, decreasing = TRUE, index.return = TRUE)
 
 # Sorted summary sensitivity of runoff to inputs
@@ -1009,17 +1010,17 @@ parcoord.notsilly(X.rejected[1:5000,], col = makeTransparent('black', 5), ylim =
 #dev.off()
 
 
-dev.new(width = 12, height = 12)
-pairs(X.kept[1:5000,] , pch = '.', gap = 0, upper.panel = NULL,
-      xlim = c(0,1), ylim = c(0,1),
-      col = makeTransparent('black', 20)
-      )
+#dev.new(width = 12, height = 12)
+#pairs(X.kept[1:5000,] , pch = '.', gap = 0, upper.panel = NULL,
+#      xlim = c(0,1), ylim = c(0,1),
+#      col = makeTransparent('black', 20)
+#      )
  
 
 blues = brewer.pal(9, 'Blues')
 pdf(file = 'graphics/pairs_dens_level0_km.pdf', width = 10, height = 10)
 #dev.new(width = 10, height = 10)
-par(oma = c(0,0,0,3))
+par(oma = c(0,0,0,3), bg = 'white')
 test = pairs(X.kept,
              labels = 1:d,
              gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
@@ -1212,8 +1213,8 @@ n = 21
 
 linecols.ext = c('black', paired)
 ylim = c(0,1)
-#pdf(file = 'graphics/ppe_ii/global_constrained_oaat.pdf', width = 9, height = 9)
-dev.new(width = 9, height = 9)
+pdf(file = 'graphics/global_not_constrained_oaat.pdf', width = 9, height = 9)
+#dev.new(width = 9, height = 9)
 par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
 ndat = ncol(glob.const.oaat$pred.mean)
 for(i in 1:d){
@@ -1242,13 +1243,13 @@ legend('top',
        cex = 0.8,
        lwd = 2,
        horiz = TRUE)
-#dev.off()
+dev.off()
 
 
 linecols.ext = c('black', paired)
 ylim = c(0,1)
-#pdf(file = 'graphics/ppe_ii/global_constrained_oaat_2.pdf', width = 9, height = 9)
-dev.new(width = 9, height = 9)
+pdf(file = 'graphics/global_constrained_oaat.pdf', width = 9, height = 9)
+#dev.new(width = 9, height = 9)
 par(mfrow = c(4,8), mar = c(2,3,2,0.3), oma = c(0.5,0.5, 3, 0.5))
 ndat = ncol(glob.const.oaat$pred.constr)
 for(i in 1:d){
@@ -1278,8 +1279,195 @@ legend('top',
        lwd = 2,
        horiz = TRUE)
 
+dev.off()
+
+
+
+cols.ramp = function(cols, z){
+  
+ramp <- colorRamp(cols)
+plot.col   <-  rgb(ramp((z - min(z))/(max(z) - min(z))), max = 255)
+plot.col
+}
+
+test = cols.ramp(cols = blues, dat.norm[level1.ix,1])
+
+
+
+library(plot3D)
+
+scatter3D(x = X.level1[,1], y = X.level1[, 4], z = X.level1[,25],
+          xlim = c(0,1), ylim = c(0,1),  zlim = c(0,1),
+          pch = 19,
+          colvar = dat.norm[level1.ix,2],
+          col = blues)
+
+
+
+scatter3D(x = X.nlevel1[,1], y = X.nlevel1[, 4], z = X.nlevel1[,25],
+          xlim = c(0,1), ylim = c(0,1),  zlim = c(0,1),
+          pch = 19,
+          colvar = dat.norm[nlevel1.ix,6])
+
+
+scatter3D(x = X.nlevel1[,1], y = X.nlevel1[, 4], z = X.nlevel1[,25],
+          xlim = c(0,1), ylim = c(0,1),  zlim = c(0,1),
+          pch = 19,
+          colvar = dat.norm[nlevel1.ix,1])
+
+  
+library(plotly)
+
+
+p <- plot_ly(mtcars, x = ~wt, y = ~hp, z = ~qsec,
+        marker = list(color = ~mpg, colorscale = c('#FFE1A1', '#683531'), showscale = TRUE)) %>%
+  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'Weight'),
+                     yaxis = list(title = 'Gross horsepower'),
+                     zaxis = list(title = '1/4 mile time')),
+         annotations = list(
+           x = 1.13,
+           y = 1.05,
+           text = 'Miles/(US) gallon',
+           xref = 'paper',
+           yref = 'paper',
+           showarrow = FALSE
+         ))
+
+# Create a shareable link to your chart
+# Set up API credentials: https://plot.ly/r/getting-started
+chart_link = api_create(p, filename="scatter3d-colorscale")
+chart_link
 
 
 
 
+library(plotly)
+
+
+level1.data = data.frame(cbind(X.level1, dat.level1))
+
+dat.nlevel1 = dat.norm[nlevel1.ix, ]
+nlevel1.data = data.frame(cbind(X.nlevel1, dat.nlevel1))
+
+
+# Create data set with indicator
+nroy.l1 = rep(NA,nrow(X))
+nroy.l1[level1.ix] = 'NROY'
+nroy.l1[nlevel1.ix] = 'FAIL'
+
+test = data.frame(cbind(X,dat.norm,nroy.l1))
+test$nroy.l1 <- as.factor(nroy.l1)
+
+
+
+# Plot the (smaller number of) sucesses, with colour indicating NPP 
+p = plot_ly(data = level1.data, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
+  marker = list(color = ~npp_n_gb, colorscale = 'Viridis', showscale = TRUE))
+p
+
+
+
+# Plot sucesses and failures.
+p = plot_ly(data = test, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
+  color = ~nroy.l1, colors = c('#BF382A', '#0C4B8E'))
+p
+
+
+# Looks like NAs are plotted as black.
+pn_cs = plot_ly(data = nlevel1.data, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
+  marker = list(color = ~cs_gb, colorscale='Viridis', showscale = TRUE)) %>%
+layout(title = 'Soil Carbon')
+pn_cs
+
+
+pn_cv = plot_ly(data = nlevel1.data, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
+  marker = list(color = ~cv, colorscale = c('#FFE1A1', '#683531'), showscale = TRUE)) %>%
+layout(title = 'Vegetation Carbon')
+pn_cv
+
+
+pn_gpp = plot_ly(data = nlevel1.data, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
+  marker = list(color = ~gpp_gb, colorscale = c('#FFE1A1', '#683531'), showscale = TRUE)) %>%
+layout(title = 'GPP')
+pn_gpp
+
+
+pn_nbp = plot_ly(data = nlevel1.data, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
+  marker = list(color = ~nbp, colorscale = c('#FFE1A1', '#683531'), showscale = TRUE)) %>%
+layout(title = 'NBP')
+pn_nbp
+
+
+pn_npp = plot_ly(data = nlevel1.data, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
+  marker = list(color = ~npp_n_gb, colorscale 'Viridis', showscale = TRUE)) %>%
+layout(title = 'NPP')
+pn_npp
+
+
+pn_runoff = plot_ly(data = nlevel1.data, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
+  marker = list(color = ~runoff, colorscale = c('#FFE1A1', '#683531'), showscale = TRUE)) %>%
+layout(title = 'Runoff')
+pn_runoff
+
+
+# 3D plotting the emulated output. 
+
+
+dat.unif = data.frame(X.unif, y.unif, nroy = rep(NA, nrow(X.unif)))
+
+dat.unif$nroy[ix.kept] <- TRUE 
+dat.unif$nroy[ix.rejected] <- FALSE
+
+# Plot sucesses and failures.
+dat.unif.trunc = dat.unif[1:10000,]
+
+pem = plot_ly(data = dat.unif.trunc, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
+  size = 4,
+  color = ~nroy, colors = c('#BF382A', '#0C4B8E'))
+pem
+
+
+
+pem_npp = plot_ly(data = dat.unif.trunc, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
+  marker = list(color = ~npp_n_gb, size = 4,colorscale ='Viridis', showscale = TRUE))
+%>% layout(title = 'NPP')
+pem_npp
+
+dat.unif.kept =  dat.unif[ix.kept, ]
+
+
+
+dat.unif.kept.trunc = data.frame(dat.unif.kept[1:10000, ])
+
+p = plot_ly(data = dat.kept.trunc, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
+  marker = list(color = ~npp_n_gb, size = 3,colorscale ='Viridis', showscale = TRUE))
+%>% layout(title = 'Kept NPP')
+p
+
+
+library(viridis)
+
+angles = seq(from = 0, to = 359, by = 1)
+
+for(i in 1:length(angles)){
+
+  png(file = paste0('graphics/anim/inputs_',sprintf("%04d",i),'.png'),
+width = 480, height = 480,
+      
+      )
+      scatter3D(x = dat.unif.kept.trunc[,1],
+                y = dat.unif.kept.trunc[, 4],
+                z = dat.unif.kept.trunc[,25],
+                xlim = c(0,1), ylim = c(0,1),  zlim = c(0,1),
+                pch = 19,
+                colvar = dat.unif.kept.trunc[, 34],
+                alpha = 0.9,
+                theta = angles[i],
+                xlab = 'alpha', ylab = 'b_wl', zlab = 'r_grow',
+                col = viridis(100),
+                clab = 'Veg Carbon (Gt)'
+                )
+      dev.off()
+}
 
