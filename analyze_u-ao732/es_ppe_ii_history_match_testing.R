@@ -544,7 +544,8 @@ hist(X.nlevel1[,i], xlim = c(0,1), main = colnames(X)[i], xlab = '', ylab = '',
 
 # -----------------------------------------------------------------
 # How good is the emulator when using the level0 constraint?
-# Use a leave-one-out metric
+# Use a leave-one-out metric.
+# Test a glmnet dimension-reduction emulator against the standard emulator.
 # -----------------------------------------------------------------
 
 
@@ -656,7 +657,6 @@ for(i in 1:ncol(dat.level0)){
 }
 
 # How accurate are the emulators using level zero data?
-
 em.mae.level0 = rep(NA, ncol(dat.level0))
 raw.em.mae.level0 = rep(NA, ncol(dat.level0))
 for(i in 1:ncol(dat.level0)){
@@ -816,7 +816,8 @@ em.mae.l10atl1.norm = (em.mae.l10atl1 / abs.l0.range) * 100
 em.mae.l1.norm = (em.mae.level1 / abs.l0.range) * 100
 
 
-dev.new()
+#dev.new()
+pdf(width = 7, height = 7, file = 'graphics/em_error_l0l1_constraints.pdf')
 par(las = 0, mar = c(7,5,2,1))
 plot(1:p, em.mae.l0.norm, pch = 19, ylim = c(0,10), type = 'o',
      axes = FALSE, xlab = '', ylab = 'mean absolute error (%)',
@@ -830,6 +831,7 @@ points(1:p, em.mae.l1.norm, col = 'blue', pch = 19, type = 'o')
 
 text(x = c(4, 4, 4), y = c(6,9,3), col = c('black', 'red', 'blue'),
      labels = c('level 0','level 0 at level1 points', 'level 1'))
+dev.off()
 
 
 # --------------------------------------------------------------------
@@ -1282,6 +1284,11 @@ legend('top',
 dev.off()
 
 
+# ---------------------------------------------------------------------------------------------
+# Testing 3D plotting of weird input spaces
+#
+# ---------------------------------------------------------------------------------------------
+
 
 cols.ramp = function(cols, z){
   
@@ -1293,7 +1300,7 @@ plot.col
 test = cols.ramp(cols = blues, dat.norm[level1.ix,1])
 
 
-
+# plot3D
 library(plot3D)
 
 scatter3D(x = X.level1[,1], y = X.level1[, 4], z = X.level1[,25],
@@ -1315,35 +1322,10 @@ scatter3D(x = X.nlevel1[,1], y = X.nlevel1[, 4], z = X.nlevel1[,25],
           pch = 19,
           colvar = dat.norm[nlevel1.ix,1])
 
-  
+
+
+# plotly
 library(plotly)
-
-
-p <- plot_ly(mtcars, x = ~wt, y = ~hp, z = ~qsec,
-        marker = list(color = ~mpg, colorscale = c('#FFE1A1', '#683531'), showscale = TRUE)) %>%
-  add_markers() %>%
-  layout(scene = list(xaxis = list(title = 'Weight'),
-                     yaxis = list(title = 'Gross horsepower'),
-                     zaxis = list(title = '1/4 mile time')),
-         annotations = list(
-           x = 1.13,
-           y = 1.05,
-           text = 'Miles/(US) gallon',
-           xref = 'paper',
-           yref = 'paper',
-           showarrow = FALSE
-         ))
-
-# Create a shareable link to your chart
-# Set up API credentials: https://plot.ly/r/getting-started
-chart_link = api_create(p, filename="scatter3d-colorscale")
-chart_link
-
-
-
-
-library(plotly)
-
 
 level1.data = data.frame(cbind(X.level1, dat.level1))
 
@@ -1365,7 +1347,6 @@ test$nroy.l1 <- as.factor(nroy.l1)
 p = plot_ly(data = level1.data, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
   marker = list(color = ~npp_n_gb, colorscale = 'Viridis', showscale = TRUE))
 p
-
 
 
 # Plot sucesses and failures.
@@ -1410,8 +1391,9 @@ pn_runoff = plot_ly(data = nlevel1.data, x = ~alpha_io, y = ~b_wl_io, z = ~r_gro
 layout(title = 'Runoff')
 pn_runoff
 
-
+# ----------------------------------------------------------------------------------------------
 # 3D plotting the emulated output. 
+# ----------------------------------------------------------------------------------------------
 
 
 dat.unif = data.frame(X.unif, y.unif, nroy = rep(NA, nrow(X.unif)))
@@ -1445,6 +1427,9 @@ p = plot_ly(data = dat.kept.trunc, x = ~alpha_io, y = ~b_wl_io, z = ~r_grow_io,
 %>% layout(title = 'Kept NPP')
 p
 
+# -----------------------------------------------------------------------------------
+# Create a rotating 3D animation of input space.
+# -----------------------------------------------------------------------------------
 
 library(viridis)
 
@@ -1470,4 +1455,27 @@ width = 480, height = 480,
                 )
       dev.off()
 }
+
+
+# -----------------------------------------------------------------------------------------------
+# Use History matching to create candidates for a new design
+# -----------------------------------------------------------------------------------------------
+
+# Which emulator to build with? All, level0 constraint or level 1 constraint?
+
+# What algorithm to use for keeping new candidates?
+# 1) Keep the n candidates with the smallest implausibility
+# 2) Generate candidate points near the NROY runs, and keep a proportion of them (expand
+# towards the edges).
+# 3) Just go ahead and generate random points and keep n NROY ones.
+
+
+
+
+
+
+
+
+
+
 
