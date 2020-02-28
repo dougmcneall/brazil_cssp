@@ -374,7 +374,6 @@ write_jules_design = function(X.aug, paramlist, fac, minfac, maxfac, tf,
     )
   colnames(lhs) = all_names
     
-)
 
   # -------------------------------------------------------------------------
   
