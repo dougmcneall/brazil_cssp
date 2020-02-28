@@ -5,7 +5,7 @@
 # rows of the data were repeated rather than NAs being installed
 # 
 
-setwd('analyze_u-ao732')
+#setwd('analyze_u-ao732')
 source('../per_pft.R')
 
 #------------------------------------------------------------------------------
