@@ -1,0 +1,134 @@
+---
+title: "Visualising a large perturbed parameter ensemble of the land surface model JULES"
+output: html_notebook
+---
+
+```{r, message = FALSE}
+source('es_ppe_ii_viz.fun.R')
+source('../per_pft.R')
+
+```
+
+```{r}
+# -----------------------------------------------------------------------------------
+# Load data
+# -----------------------------------------------------------------------------------
+
+years = 1861:2014
+ysec = 60*60*24*365
+norm.vec = c(1e12, 1e12, 1e12/ysec , 1e12, 1e12, 1e9)
+
+# Load up the data
+lhs_i = read.table('data/ES_PPE_i/lhs_u-ao732.txt', header = TRUE)
+lhs_ii = read.table('data/ES_PPE_ii/lhs_u-ao732a.txt', header = TRUE)
+
+toplevel.ix = 1:499
+
+lhs = rbind(lhs_i, lhs_ii)[toplevel.ix, ]
+
+X = normalize(lhs)
+colnames(X) = colnames(lhs)
+d = ncol(X)
+# lower and higher bound on the normalised matrix for visualisation
+rx = rbind(rep(0,32), rep(1,32))
+
+fnallvec = dir('data/ES_PPE_ii_test/', pattern = 'Annual')
+# WARNING - hard coded hack to sort
+fidx = grep("Annual.(?!Amazon).*", fnallvec, perl=TRUE)
+fnvec_interim = fnallvec[fidx]
+fidx2 = grep("sum.(?!standard).*", fnvec_interim, perl=TRUE)
+fnvec = fnvec_interim[fidx2]
+fnlocvec = paste0('data/ES_PPE_ii_test/', fnvec)
+
+# Extract the bit of the filename that describes the data
+fs = lapply(fnvec,regexpr, pattern = 'Annual')
+fe = lapply(fnvec,regexpr, pattern = 'global_sum.txt')
+
+fnams = rep(NA, length(fnvec))
+for(i in 1:length(fnvec)){
+  fnams[i] = substr(fnvec[i], attr(fs[[1]], 'match.length')+2, fe[[i]][1]-2)
+}
+
+# Constrain on runoff first
+datmat.raw = matrix(nrow = nrow(X), ncol = length(fnlocvec))
+for(i in 1:length(fnlocvec)){
+  dat = load_ts_ensemble(fnlocvec[i])[toplevel.ix, ]
+  dat.modern = dat[ ,135:154]
+  mean.modern = apply(dat.modern, 1, mean)
+  datmat.raw[ , i] = mean.modern
+}
+colnames(datmat.raw) = fnams
+
+# Here 'normalised' means to a convenient unit (such as Sv for runoff)
+dat.norm = sweep(datmat.raw, 2, norm.vec, FUN = '/')
+p = ncol(dat.norm)
+head(dat.norm)
+
+```
+
+## A "level 0" constraint  
+A quick look at the histograms of the ensemble output show that there are a number of ensemble members with very low (close to zero) runoff. Inspecting these shows that they are highly unrealistic in lots of other ways as well (e.g. very low gpp/npp). This offers an opportunity to remove runs early on that might reduce the accuracy of an emulator.  
+
+```{r}
+par(mfrow = c(3,2))
+for(i in 1:6){
+  hist(dat.norm[,i], main = fnams[i])
+}
+
+```
+
+Here is the runoff plotted against each parameter - there are plenty of unrealistically low ensemble members.
+```{r}
+par(mfrow = c(4, 8), mar = c(1,1,2,1))
+for(i in 1:d){
+  plot(lhs[ ,i],dat.norm[ ,6], axes = FALSE, xlab = '', ylab = '',
+       main = colnames(lhs)[i], cex.main = 0.8)
+}
+```
+We remove any ensemble member with runoff less than or equal to 0.5 Sv, and NBP less that -10
+```{r}
+allix = 1:(nrow(dat.norm))
+
+# Constrain with global runoff and nbp, so that the emulator
+# is not negatively affected by really bad points
+level0.ix = which(dat.norm[,'runoff'] >0.5 & dat.norm[,'nbp'] > -10)
+dat.level0  = dat.norm[level0.ix, ]
+X.level0 = X[level0.ix, ]
+lhs.level0 = lhs[level0.ix, ]
+
+nlevel0.ix = setdiff(allix, level0.ix)
+X.nlevel0 = X[nlevel0.ix, ]
+lhs.nlevel0 = lhs[nlevel0.ix, ]
+
+# These are the ensemble members which do not run (produce NA)
+na.ix = which(is.na(dat.norm[,'runoff']))
+X.na = X[na.ix, ]
+lhs.na = lhs[na.ix, ]
+
+lhs.rx = round(apply(lhs,2,range),1)
+
+```
+
+
+Plotting the remaining members shows that many of the membbbers with low GPP and NPP have been removed as well.
+```{r}
+# Visualise the constrained space ...
+mins  = apply(X.level0, 2, min)
+maxes = apply(X.level0, 2, max)
+
+# expand this to visualise the level 1 constraints
+#dev.new(width = 9, height = 10)
+par(mfrow = c(3,2))
+for(i in 1:6){
+  hist(dat.norm[level0.ix,i], main = fnams[i])
+}
+```
+
+
+
+
+
+
+
+
+
