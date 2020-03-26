@@ -1,6 +1,9 @@
 ---
-title: "Visualising a large perturbed parameter ensemble of the land surface model JULES"
-output: html_notebook
+title: Visualising a large perturbed parameter ensemble of the land surface model
+  JULES
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r, message = FALSE}
