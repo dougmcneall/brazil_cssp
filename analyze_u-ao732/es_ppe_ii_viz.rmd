@@ -70,7 +70,7 @@ head(dat.norm)
 ```
 
 ## A "level 0" constraint  
-A quick look at the histograms of the ensemble output show that there are a number of ensemble members with very low (close to zero) runoff. Inspecting these shows that they are highly unrealistic in lots of other ways as well (e.g. very low gpp/npp). This offers an opportunity to remove runs early on that might reduce the accuracy of an emulator.  
+A quick look at the histograms of the ensemble output show that there are a number of ensemble members with very low (close to zero) runoff. Inspecting these shows that they are highly unrealistic in lots of other ways as well (e.g. very low gpp/npp). This offers an opportunity to remove runs early on that might reduce the accuracy of an emulator - a "level 0" constraint.    
 
 ```{r}
 par(mfrow = c(3,2))
@@ -81,6 +81,7 @@ for(i in 1:6){
 ```
 
 Here is the runoff plotted against each parameter - there are plenty of unrealistically low ensemble members.
+
 ```{r}
 par(mfrow = c(4, 8), mar = c(1,1,2,1))
 for(i in 1:d){
@@ -112,21 +113,117 @@ lhs.rx = round(apply(lhs,2,range),1)
 
 ```
 
+Plotting the remaining members shows that many of the members with low GPP and NPP have been removed as well.
 
-Plotting the remaining members shows that many of the membbbers with low GPP and NPP have been removed as well.
 ```{r}
 # Visualise the constrained space ...
 mins  = apply(X.level0, 2, min)
 maxes = apply(X.level0, 2, max)
 
-# expand this to visualise the level 1 constraints
-#dev.new(width = 9, height = 10)
 par(mfrow = c(3,2))
 for(i in 1:6){
   hist(dat.norm[level0.ix,i], main = fnams[i])
 }
 ```
 
+## Parallel coordinates plots of input space with a level 0 constraint
+
+```{r, fig.width=10, fig.height=6}
+# Parallel Coordinates plot of NROY and ruled out members, level 0
+#dev.new(width = 20, height = 9)
+#pdf(file = 'graphics/pcp_level0.pdf', width = 20, height = 9)
+par(mfrow = c(2,1), las = 2, mar = c(7,4,4,1), cex.axis = 0.8)
+
+# This function doesn't recale the maximum and minimum of each parameter, so you can easier see where there are gaps.
+parcoord.notsilly(X.level0, rx, col = makeTransparent('black', 100), ylim = c(0,1),
+         main = 'level 0 NROY ensemble members', var.label = TRUE)
+                  
+parcoord.notsilly(X.nlevel0, rx, col = makeTransparent('black', 100), ylim = c(0,1),
+         main = 'level 0 ruled out ensemble members', var.label = TRUE)
+                  
+parcoord.notsilly(X.na,rx, col = makeTransparent('red', 255), add = TRUE)
+
+reset()
+legend('left',
+       legend = 'Did Not Run',
+       inset = 0.1,
+       col = 'red',
+       cex = 1.2,
+       lwd = 2,
+       horiz = TRUE)
+```
+
+The parallel coordinates plot on the top show those ensemble members that are NOT Ruled Out Yet (NROY) by the "level 0" constraints. The bottom shows those that are ruled out by the constraints (black) and those ensemble members that did not run at all (red). On the bottom diagram, you can see how many ensemble members fail to run when b_wl is low, suggesting that the lower limit of that parameter is set too low. Similarly, you can see that the initial constraints rule out many members when F0_io is high and b_wl is low, suggesting that this particular combination of parameters causes problems with the modelling.
+
+
+## Pairs plot of ruled-out ensemble member input settings  
+
+```{r, fig.width = 10, fig.height = 10}
+# Pairs plot of level 0 constraint
+
+# Pairs plot of level 0 constraint excluded members is much easier to interpret
+#dev.new(width = 10, height = 10)
+#pdf(file = 'graphics/pairs_nlevel0.pdf', width = 10, height = 10)
+pairs(rbind(X.nlevel0, X.na), gap = 0, lower.panel = NULL,
+      labels = 1:d,
+      cex.lab = 0.8,
+      xlim = c(0,1), ylim = c(0,1),
+      col = c(rep(makeTransparent('black', 50), nrow(X.nlevel0)), rep(makeTransparent('red', 100), nrow(X.na))),
+      pch = 20,
+      xaxt = 'n', yaxt = 'n'
+      )
+par(xpd = NA)
+#text(0.2, 0.6, labels = paste0(colnames(lhs)[1:5],'\n'))
+
+legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
+mtext(side = 1, text = 'Level 0 ruled out ensemble members', cex = 2)
+reset()
+legend('bottom',
+       legend = c('Ruled out', 'Did Not Run'),
+       inset = 0.15,
+       col = c(makeTransparent('black', 50),makeTransparent('red', 100)),
+       cex = 1.1,
+       pch = 20,
+       horiz = TRUE)
+#dev.off()
+
+```
+A pairs plot of the ensemble members that did not run (red) or were ruled out by the level 0 constraints (black).
+
+
+## Level 1 constraints
+```{r, fig.width = 7, fig.height = 7}
+
+# Histogram of level 1 constraints
+hcol = 'darkgrey'
+lcol = 'black'
+par(mfrow = c(3,2), fg = 'darkgrey', las = 1)
+
+hist(dat.norm[,'runoff'], col = hcol, main = 'Runoff', xlab = 'Sv')
+polygon(x = c(0.5, 100, 100, 0.5), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2'),
+        border = makeTransparent('tomato2'))
+hist(dat.norm[,'nbp'], col = hcol, main = 'NBP', xlab = 'GtC/year')
+polygon(x = c(-10, 100, 100, -10), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2'),
+        border = makeTransparent('tomato2'))
+hist(dat.norm[,'cs_gb'], col = hcol, main = 'Soil Carbon', xlab = 'GtC')
+polygon(x = c(750, 3000, 3000, 750), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2'),
+        border = makeTransparent('tomato2'))
+
+hist(dat.norm[,'cv'], col = hcol, main = 'Vegetation Carbon', xlab = 'GtC')
+polygon(x = c(300, 800, 800, 300), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2'),
+       border =  makeTransparent('tomato2'))
+hist(dat.norm[,'npp_n_gb'], col = hcol , main = 'NPP', xlab = 'GtC/year')
+polygon(x = c(35, 80, 80, 35), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2'),
+        border = makeTransparent('tomato2')
+)
+
+```
+The histograms show the location of some initial "level 1" constraints. These are the limits that the modeller (Andy Wiltshire) is willing to tolerate in a number of carbon cycle outputs before rejecting the ensemble member as useless.
 
 
 

@@ -54,8 +54,6 @@ for(i in 1:d){
 }
 
 
-
-
 # Parallel Coordinates plot of NROY and ruled out members, level 0
 #dev.new(width = 20, height = 9)
 pdf(file = 'graphics/pcp_level0.pdf', width = 20, height = 9)
