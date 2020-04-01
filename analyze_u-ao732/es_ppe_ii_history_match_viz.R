@@ -255,7 +255,6 @@ legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
 
 
 
-
 # level 1 constrained marginal hgistograms
 dev.new(width = 12, height = 11)
 par(mfrow = c(8,4), mar = c(4,3,2,1), oma = c(0,0,2,0))
@@ -280,6 +279,7 @@ hist(X.nlevel1[,i], xlim = c(0,1), main = colnames(X)[i], xlab = '', ylab = '',
 # How good is the emulator when using the level0 constraint?
 # Use a leave-one-out metric.
 # Test a glmnet dimension-reduction emulator against the standard emulator.
+# Transfer this to a separate Rmarkdown notebook
 # -----------------------------------------------------------------
 
 
