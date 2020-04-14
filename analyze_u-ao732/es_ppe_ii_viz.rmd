@@ -102,6 +102,7 @@ for(i in 1:d){
 Here is the runoff plotted against each parameter - there are plenty of unrealistically low ensemble members.
 
 
+
 ## A "level 0" constraint  
 A quick look at the histograms of the ensemble output show that there are a number of ensemble members with very low (close to zero) runoff. Inspecting these shows that they are highly unrealistic in lots of other ways as well (e.g. very low gpp/npp). This offers an opportunity to remove runs early on that might reduce the accuracy of an emulator - a "level 0" constraint.    
 
@@ -126,6 +127,7 @@ hist(dat.norm[,'npp_n_gb'], col = hcol , main = 'NPP', xlab = 'GtC/year')
 
 ```
 Red shaded areas show the regions of model output retained in a level 0 constraint. We remove any ensemble member with runoff less than or equal to 0.5 Sv, and NBP less that -10  
+
  
 ```{r}
 allix = 1:(nrow(dat.norm))
@@ -155,6 +157,13 @@ for(i in 1:6){
 ```
 
 Plotting the remaining members shows that many of the members with low GPP and NPP have been removed as well.
+
+
+```{r, fig.width = 8, fig.height = 8}
+pairs(dat.norm[level0.ix, ], lower.panel = NULL)
+
+```
+This is the pairs plot of the data with the very worst runs removed - leaving only those that passed the "level 0" constraint.
 
 
 ## Parallel coordinates plots of input space with a level 0 constraint
@@ -278,6 +287,7 @@ nlevel1.ix = setdiff(allix, level1.ix)
 X.nlevel1 = X[nlevel1.ix, ]
 
 dat.level1 = dat.norm[level1.ix, ]
+dat.nlevel1 = dat.norm[nlevel1.ix, ]
 
 # how many ensemble members are excluded?
 nrow(dat.level1)
@@ -317,6 +327,25 @@ legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
 mtext(side = 1, text = 'Level 1 NROY ensemble members', cex = 2)
 
 ```
+
+```{r, fig.width = 8, fig.height = 8}
+# Pairs plot of output
+
+black150 = makeTransparent('black', 90)
+red150 = makeTransparent('red',50)
+
+# Find the index of the nbp outlier and remove it for plotting
+rem.ix = which (dat.nlevel1[,'nbp'] < -20)
+
+pairs(rbind(dat.nlevel1[-rem.ix, ], dat.level1), col = c(rep(red150, nrow(dat.nlevel1)-1), rep(black150, nrow(dat.level1))),
+      pch = 21,
+      bg = c(rep(red150, nrow(dat.nlevel1)-1), rep(black150, nrow(dat.level1))),
+      lower.panel = NULL
+)
+                                                
+```
+This pairs plot shows how each output relates to the others, and which ensemble members are removed by the level 1 constraints (in red). Note that anoutlier with a very negative NBP has been removed for plotting purposes.
+
 
 ## Use a Gaussian process emulator to perform a level1 constraint  
 The emulator is built using the ensemble members not ruled out by the "level 0" constraints.
