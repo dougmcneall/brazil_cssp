@@ -6,19 +6,19 @@ output:
     df_print: paged
 ---
 
+This notebook finds the input space of the land surface model JULES that matches some basic observations of the global carbon cycle, at the start of the 2st Century. The ensemble is 500 members, driven with a global reanalysis that covers the 20th Century.
+
+### Load helper functions
 ```{r, message = FALSE}
 
 knitr::opts_chunk$set(fig.path = "figs/")
+# load some helper functions
 source('es_ppe_ii_viz.fun.R')
 source('../per_pft.R')
-
 ```
 
+### Load data and calculate some useful constants   
 ```{r}
-# -----------------------------------------------------------------------------------
-# Load data
-# -----------------------------------------------------------------------------------
-
 years = 1861:2014
 ysec = 60*60*24*365
 norm.vec = c(1e12, 1e12, 1e12/ysec , 1e12, 1e12, 1e9)
@@ -29,6 +29,7 @@ lhs_ii = read.table('data/ES_PPE_ii/lhs_u-ao732a.txt', header = TRUE)
 
 toplevel.ix = 1:499
 
+# The raw input data is a latun hypercube
 lhs = rbind(lhs_i, lhs_ii)[toplevel.ix, ]
 
 X = normalize(lhs)
@@ -70,19 +71,26 @@ p = ncol(dat.norm)
 head(dat.norm)
 
 ```
+This matrix shows the first few rows of the output data: soil carbon (cs_gb), vegetation carbon (cv), gross primary production (gpp_gb), net biome production (nbp), net primary production (npp_n_gb) and runoff.  
 
-## A "level 0" constraint  
-A quick look at the histograms of the ensemble output show that there are a number of ensemble members with very low (close to zero) runoff. Inspecting these shows that they are highly unrealistic in lots of other ways as well (e.g. very low gpp/npp). This offers an opportunity to remove runs early on that might reduce the accuracy of an emulator - a "level 0" constraint.    
+```{r, fig.width = 7, fig.height = 7}
+hcol = 'darkgrey'
+lcol = 'black'
+par(mfrow = c(3,2), fg = 'darkgrey', las = 1)
 
-```{r}
-par(mfrow = c(3,2))
-for(i in 1:6){
-  hist(dat.norm[,i], main = fnams[i])
-}
+hist(dat.norm[,'runoff'], col = hcol, main = 'Runoff', xlab = 'Sv')
+
+hist(dat.norm[,'nbp'], col = hcol, main = 'NBP', xlab = 'GtC/year')
+
+hist(dat.norm[,'cs_gb'], col = hcol, main = 'Soil Carbon', xlab = 'GtC')
+
+hist(dat.norm[,'cv'], col = hcol, main = 'Vegetation Carbon', xlab = 'GtC')
+
+hist(dat.norm[,'npp_n_gb'], col = hcol , main = 'NPP', xlab = 'GtC/year')
 
 ```
 
-Here is the runoff plotted against each parameter - there are plenty of unrealistically low ensemble members.
+The histograms show the raw model output.
 
 ```{r}
 par(mfrow = c(4, 8), mar = c(1,1,2,1))
@@ -91,12 +99,36 @@ for(i in 1:d){
        main = colnames(lhs)[i], cex.main = 0.8)
 }
 ```
-We remove any ensemble member with runoff less than or equal to 0.5 Sv, and NBP less that -10
+Here is the runoff plotted against each parameter - there are plenty of unrealistically low ensemble members.
+
+
+## A "level 0" constraint  
+A quick look at the histograms of the ensemble output show that there are a number of ensemble members with very low (close to zero) runoff. Inspecting these shows that they are highly unrealistic in lots of other ways as well (e.g. very low gpp/npp). This offers an opportunity to remove runs early on that might reduce the accuracy of an emulator - a "level 0" constraint.    
+
+```{r, fig.width = 7, fig.height = 7}
+# Histogram of level 0 constraints
+hcol = 'darkgrey'
+lcol = 'black'
+par(mfrow = c(3,2), fg = 'darkgrey', las = 1)
+
+hist(dat.norm[,'runoff'], col = hcol, main = 'Runoff', xlab = 'Sv')
+polygon(x = c(0.5, 100, 100, 0.5), y = c(0, 0, 1000, 1000),
+        col = makeTransparent('tomato2'),
+        border = makeTransparent('tomato2'))
+
+hist(dat.norm[,'nbp'], col = hcol, main = 'NBP', xlab = 'GtC/year')
+
+hist(dat.norm[,'cs_gb'], col = hcol, main = 'Soil Carbon', xlab = 'GtC')
+
+hist(dat.norm[,'cv'], col = hcol, main = 'Vegetation Carbon', xlab = 'GtC')
+
+hist(dat.norm[,'npp_n_gb'], col = hcol , main = 'NPP', xlab = 'GtC/year')
+
+```
+Red shaded areas show the regions of model output retained in a level 0 constraint. We remove any ensemble member with runoff less than or equal to 0.5 Sv, and NBP less that -10  
+ 
 ```{r}
 allix = 1:(nrow(dat.norm))
-
-# Constrain with global runoff and nbp, so that the emulator
-# is not negatively affected by really bad points
 level0.ix = which(dat.norm[,'runoff'] >0.5 & dat.norm[,'nbp'] > -10)
 dat.level0  = dat.norm[level0.ix, ]
 X.level0 = X[level0.ix, ]
@@ -113,12 +145,6 @@ lhs.na = lhs[na.ix, ]
 
 lhs.rx = round(apply(lhs,2,range),1)
 
-```
-
-Plotting the remaining members shows that many of the members with low GPP and NPP have been removed as well.
-
-```{r}
-# Visualise the constrained space ...
 mins  = apply(X.level0, 2, min)
 maxes = apply(X.level0, 2, max)
 
@@ -127,6 +153,9 @@ for(i in 1:6){
   hist(dat.norm[level0.ix,i], main = fnams[i])
 }
 ```
+
+Plotting the remaining members shows that many of the members with low GPP and NPP have been removed as well.
+
 
 ## Parallel coordinates plots of input space with a level 0 constraint
 
@@ -187,7 +216,6 @@ legend('bottom',
        cex = 1.1,
        pch = 20,
        horiz = TRUE)
-#dev.off()
 
 ```
 A pairs plot of the ensemble members that did not run (red) or were ruled out by the level 0 constraints (black).
@@ -287,14 +315,12 @@ par(xpd = NA)
 
 legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
 mtext(side = 1, text = 'Level 1 NROY ensemble members', cex = 2)
-#dev.off()
 
 ```
 
 ## Use a Gaussian process emulator to perform a level1 constraint  
 The emulator is built using the ensemble members not ruled out by the "level 0" constraints.
-```{r l0_emulators}
-knitr::opts_chunk$set(cache = TRUE)
+```{r l0_emulators, cache = TRUE}
 
 # Samples from a uniform distribution across all of input space
 nsamp.unif = 100000   
@@ -331,38 +357,32 @@ X.rejected = X.unif[ix.rejected, ]
 
 ```
 
+## Parallel coordinate plot of emulated members  
+This doesn't tell you very much. Reordering the axes might help here - ggplot has a parallel coordinates plot function that will reorder to various criteria.
 
 ```{r, fig.width = 10, fig.height = 6}
-
-#pdf(file = 'pcpTest.pdf', width = 20, height = 4)
-#dev.new(width = 20, height = 9)
 par(las = 2, cex.axis = 0.8, mfrow = c(2,1))
 
-parcoord.notsilly(X.kept[1:5000,], col = makeTransparent('black', 5), ylim = c(0,1))
-parcoord.notsilly(X.rejected[1:5000,], col = makeTransparent('black', 5), ylim = c(0,1))
+parcoord.notsilly(X.kept[1:1000,], col = makeTransparent('black', 5), ylim = c(0,1))
+parcoord.notsilly(X.rejected[1:1000,], col = makeTransparent('black', 5), ylim = c(0,1))
 
 ```
-#dev.off()
 
+## Pairs plot of NROY density
+This plot shows the density of emulated inputs that are retained when the level 1 constraints are applied.
 
-#dev.new(width = 12, height = 12)
-#pairs(X.kept[1:5000,] , pch = '.', gap = 0, upper.panel = NULL,
-#      xlim = c(0,1), ylim = c(0,1),
-#      col = makeTransparent('black', 20)
-#      )
- 
-```{r emulator_pairs, fig.width = 10, fig.height = 10}
+```{r emulator_pairs, fig.width = 10, fig.height = 10, warning = FALSE, message = FALSE}
 blues = brewer.pal(9, 'Blues')
 #pdf(file = 'graphics/pairs_dens_level0_km.pdf', width = 10, height = 10)
 #dev.new(width = 10, height = 10)
 par(oma = c(0,0,0,3), bg = 'white')
-test = pairs(X.kept,
-             labels = 1:d,
-             gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
-             panel = dfunc.up,
-             cex.labels = 1,
-             col.axis = 'white',
-  dfunc.col = blues)
+pairs(X.kept,
+      labels = 1:d,
+      gap = 0, lower.panel = NULL, xlim = c(0,1), ylim = c(0,1),
+      panel = dfunc.up,
+      cex.labels = 1,
+      col.axis = 'white',
+      dfunc.col = blues)
 
 image.plot(legend.only = TRUE,
            zlim = c(0,1),
@@ -370,11 +390,8 @@ image.plot(legend.only = TRUE,
            legend.args = list(text = 'Density of model runs matching the criteria', side = 3, line = 1),
            horizontal = TRUE
 )
-#par(xpd = NA)
-#text(0.2, 0.6, labels = paste0(colnames(lhs)[1:5],'\n'))
-legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
 
-#dev.off()
+legend('left', legend = paste(1:d, colnames(lhs)), cex = 0.9, bty = 'n')
 
 ```
 
