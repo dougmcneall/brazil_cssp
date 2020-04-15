@@ -9,12 +9,37 @@ output:
 This notebook finds the input space of the land surface model JULES that matches some basic observations of the global carbon cycle, at the start of the 2st Century. The ensemble is 500 members, driven with a global reanalysis that covers the 20th Century.
 
 ### Load helper functions
-```{r, message = FALSE}
+```{r, message = FALSE, warning=FALSE}
 
 knitr::opts_chunk$set(fig.path = "figs/")
 # load some helper functions
 source('es_ppe_ii_viz.fun.R')
-source('../per_pft.R')
+```
+
+### Load packages
+```{r, message = FALSE, warning=FALSE}
+library(RColorBrewer)
+library(fields)
+library(MASS)
+library(DiceKriging)
+source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/emtools.R")
+source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/imptools.R")
+source("https://raw.githubusercontent.com/dougmcneall/packages-git/master/vistools.R")
+
+```
+
+## Preliminaries
+```{r}
+# Some pallete options
+yg = brewer.pal(9, "YlGn")
+ryb = brewer.pal(11, "RdYlBu")
+byr = rev(ryb)
+rb = brewer.pal(11, "RdBu")
+br = rev(rb)
+blues = brewer.pal(9, 'Blues')
+cbPal <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+
 ```
 
 ### Load data and calculate some useful constants   
@@ -55,7 +80,6 @@ for(i in 1:length(fnvec)){
   fnams[i] = substr(fnvec[i], attr(fs[[1]], 'match.length')+2, fe[[i]][1]-2)
 }
 
-# Constrain on runoff first
 datmat.raw = matrix(nrow = nrow(X), ncol = length(fnlocvec))
 for(i in 1:length(fnlocvec)){
   dat = load_ts_ensemble(fnlocvec[i])[toplevel.ix, ]
@@ -342,6 +366,16 @@ pairs(rbind(dat.nlevel1[-rem.ix, ], dat.level1), col = c(rep(red150, nrow(dat.nl
       bg = c(rep(red150, nrow(dat.nlevel1)-1), rep(black150, nrow(dat.level1))),
       lower.panel = NULL
 )
+mtext(side = 1, text = 'Output of ensemble members ruled out\nby level 1 constraints', cex = 1.5)
+reset()
+legend('left',
+       legend = c('NROY', 'Ruled out'),
+       inset = 0.05,
+       col = c(makeTransparent('black', 90),makeTransparent('red', 59)),
+       cex = 1.1,
+       pch = 20,
+       horiz = TRUE)
+
                                                 
 ```
 This pairs plot shows how each output relates to the others, and which ensemble members are removed by the level 1 constraints (in red). Note that anoutlier with a very negative NBP has been removed for plotting purposes.
@@ -401,9 +435,7 @@ parcoord.notsilly(X.rejected[1:1000,], col = makeTransparent('black', 5), ylim =
 This plot shows the density of emulated inputs that are retained when the level 1 constraints are applied.
 
 ```{r emulator_pairs, fig.width = 10, fig.height = 10, warning = FALSE, message = FALSE}
-blues = brewer.pal(9, 'Blues')
-#pdf(file = 'graphics/pairs_dens_level0_km.pdf', width = 10, height = 10)
-#dev.new(width = 10, height = 10)
+
 par(oma = c(0,0,0,3), bg = 'white')
 pairs(X.kept,
       labels = 1:d,

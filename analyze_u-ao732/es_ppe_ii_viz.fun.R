@@ -1,11 +1,18 @@
 # Functions for es_ppe_ii_viz.rmd
+  
+# Example of adding  density plots to a pairs plot
+dfunc.up <- function(x, y, dfunc.col = greys, ...){
+  require(MASS)
+  require(RColorBrewer)
+  
+  #rb = brewer.pal(9, "RdBu")
+  #br  = rev(rb)
+  
+  # function for plotting 2d kernel density estimates in pairs() plot.
+  kde = kde2d(x,y)
+  image(kde, col = dfunc.col, add = TRUE)
+}
 
-#setwd('analyze_u-ao732')
-
-
-#------------------------------------------------------------------------------
-# Local functions
-#------------------------------------------------------------------------------
 
 load_ts_ensemble = function(fn, na.strings='-9.990000000000000000e+02', skip=1){
   # Load an ensemble of time series data.
@@ -47,23 +54,6 @@ allin = function(x, mins, maxes){
   all(x > mins & x < maxes)
 }
 
-normalize.wrt <- function(a,b){
-  ## n.wrt(x)
-  ##
-  ## A function that takes a matrix a and normalizes each column,
-  ## from zero to 1, depending upon the minimum and maximum of
-  ## matrix b.
-  ##
-  ## D.McNeall 27th November 2006
-  ## I think this came from RKSH!
-  ##
-  n <- nrow(a)
-  mmins <- t(kronecker(apply(b,2,min),t(rep(1,n))))
-  mmaxs <- t(kronecker(apply(b,2,max),t(rep(1,n))))
-  
-  (a-mmins)/(mmaxs-mmins)
-}
-
 normalize.na = function(X, wrt = NULL){
   # Normalize with respect to a matrix.
   # This version handles NAs
@@ -100,6 +90,89 @@ reset <- function() {
   par(mfrow=c(1, 1), oma=rep(0, 4), mar=rep(0, 4), new=TRUE)
   plot(0:1, 0:1, type="n", xlab="", ylab="", axes=FALSE)
 }
+
+
+twoStep = function(X, y, nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, seed=NULL, trace=FALSE, maxit=100,
+                   REPORT=10, factr=1e7, pgtol=0.0, parinit=NULL, popsize=100){
+  
+  control_list = list(trace=trace, maxit=maxit, REPORT=REPORT, factr=factr, pgtol=pgtol, pop.size=popsize)
+  
+  xvars = colnames(X)
+  data = data.frame(response=y, x=X)
+  colnames(data) <- c("response", xvars)
+  nval = length(y)
+  
+  # Build the first emulator with a flat prior
+  m0 = km(y ~ 1, design=X, response=y, nugget=nugget,
+          nugget.estim=nuggetEstim, noise.var=noiseVar, control=control_list)
+  
+  coefs0 = m0@covariance@range.val 
+  print('coefs0')
+  print(coefs0)
+  
+  start.form = as.formula(paste("y ~ ", paste(xvars, collapse= "+")))
+  
+  # use BIC so that model is parsimonious and allow GP to pick up any other behaviour not
+  # explained by the key linear terms      
+  startlm = lm(start.form, data=data)
+  #      print('before step')
+  #      print(startlm)
+  steplm = step(startlm, direction="both", k=log(nval), trace=TRUE)
+  print('after step')
+  print(steplm)
+  form = as.formula(steplm)
+  print('Formula')
+  print(form)
+  data$response = NULL
+  labels = labels(terms(steplm))
+  labels = labels[!(labels %in% c('response'))]
+  if (length(labels) > 0) {
+    start.form = as.formula(paste("~ ", paste(labels, collapse= "+")))
+  } else {
+    start.form = as.formula("~ 1")
+  }    
+  print("Step has found formula:")
+  print(start.form)
+  if (!is.null(seed)) {set.seed(seed)}
+  m = km(start.form, design=X, response=y, nugget=nugget, parinit=coefs0,
+         nugget.estim=nuggetEstim, noise.var=noiseVar, control=control_list)
+  
+  return(list(x=X, y=y, nugget=nugget, nugget.estim=nuggetEstim,
+              noise.var=noiseVar, emulator=m, seed=seed, coefs=m@covariance@range.val,
+              trends=m@trend.coef, meanTerms=all.vars(start.form), steplm = steplm))
+  
+}
+
+twoStep.glmnet = function(X, y, nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, seed=NULL, trace=FALSE, maxit=100,
+                          REPORT=10, factr=1e7, pgtol=0.0, parinit=NULL, popsize=100){
+  # Use lasso to reduce input dimension of emulator before
+  # building.
+  control_list = list(trace=trace, maxit=maxit, REPORT=REPORT, factr=factr, pgtol=pgtol, pop.size=popsize)
+  xvars = colnames(X)
+  data = data.frame(response=y, x=X)
+  colnames(data) <- c("response", xvars)
+  nval = length(y)
+  
+  # fit a lasso by cross validation
+  library(glmnet)
+  fit.glmnet.cv = cv.glmnet(x=X,y=y)
+  
+  # The labels of the retained coefficients are here
+  # (retains intercept at index zero)
+  coef.i = (coef(fit.glmnet.cv, s = "lambda.1se"))@i
+  labs = labels(coef(fit.glmnet.cv, s = "lambda.1se"))[[1]]
+  labs = labs[-1] # remove intercept
+  glmnet.retained = labs[coef.i]
+  
+  start.form = as.formula(paste("~ ", paste(glmnet.retained , collapse= "+")))
+  m = km(start.form, design=X, response=y, nugget=nugget, parinit=parinit,
+         nugget.estim=nuggetEstim, noise.var=noiseVar, control=control_list)
+  
+  return(list(x=X, y=y, nugget=nugget, nugget.estim=nuggetEstim,
+              noise.var=noiseVar, emulator=m, seed=seed, coefs=m@covariance@range.val,
+              trends=m@trend.coef, meanTerms=all.vars(start.form), fit.glmnet.cv=fit.glmnet.cv))
+}
+
 
 twoStep.sens = function(X, y, n=21, predtype = 'UK', nugget=NULL, nuggetEstim=FALSE, noiseVar=NULL, seed=NULL, trace=FALSE, maxit=100,
                         REPORT=10, factr=1e7, pgtol=0.0, parinit=NULL, popsize=100){
